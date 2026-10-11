@@ -2,6 +2,8 @@
 
 Source repository: https://github.com/abishek0109/B-day-website
 
+Live website: https://abishek0109.github.io/B-day-website/
+
 A scrapbook-inspired digital birthday memory book. The existing React/Vite interface keeps its warm paper textures, serif typography, Polaroid framing, washi tape, and pressed-flower decorations. Personal memories and media are intentionally left empty until the owner adds real content.
 
 ## Run locally
@@ -58,6 +60,8 @@ The repository includes a Supabase client, local project configuration, and sche
 6. Restart the development server, then visit `/admin` and sign in as that account. If a session was already active, sign out and back in so the refreshed JWT includes `app_metadata.role`.
 
 This repository is connected to the Supabase GitHub integration with the repository root as its working directory and `main` as the production branch. Production deployment is enabled. Add future schema changes as new timestamped migration files; do not edit migrations that have already been applied. The root `supabase_schema.sql` remains a standalone bootstrap script.
+
+The website is deployed to GitHub Pages by [`.github/workflows/deploy-pages.yml`](./.github/workflows/deploy-pages.yml) whenever `main` is updated. Set the repository Actions variables `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` under **Settings → Secrets and variables → Actions → Variables** before deployment. The anon/publishable key is intended for frontend use; never add a service-role key. The Pages build uses the `/B-day-website/` base path, and the included 404 fallback supports direct links and browser refreshes.
 
 Only the public Supabase anon/publishable key belongs in frontend configuration. **Never** use a Supabase service-role key in a `VITE_*` variable. The schema makes uploaded media publicly readable, so only upload content intended to be public once its URL is shared.
 

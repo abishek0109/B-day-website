@@ -425,7 +425,7 @@ export const AdminDashboard: React.FC = () => {
 
           <div className="mt-6 pt-4 border-t border-[#E3D9CC] text-center">
             <a
-              href="/"
+              href={import.meta.env.BASE_URL}
               className="text-xs font-serif text-[#7E6C5F] hover:text-[#3D3028] transition-colors"
             >
               ← Back to Birthday Memory Book
@@ -489,7 +489,7 @@ export const AdminDashboard: React.FC = () => {
 
             {/* View Live Public Site */}
             <a
-              href="/"
+              href={import.meta.env.BASE_URL}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#FAF6EC] border border-[#DECFBD] text-[#514137] text-xs font-serif rounded-xs hover:bg-[#F1E8DA] transition-colors"
