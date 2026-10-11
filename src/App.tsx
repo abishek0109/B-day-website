@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { BrowserRouter, Navigate, Route, Routes, useLocation, useParams } from 'react-router-dom';
 import { BirthdaySiteData } from './types/scrapbook';
 import { getDefaultPublishedBirthdayPage, getPublicBirthdaySite } from './lib/dataService';
@@ -37,6 +37,18 @@ function LoadingBook() {
   );
 }
 
+function SiteUnavailable() {
+  return (
+    <div className="min-h-screen bg-[#F8F4EC] flex items-center justify-center p-6">
+      <div role="alert" className="max-w-lg rounded-xs border border-[#DECFBD] bg-[#FAF7F2] p-8 text-center shadow-scrapbook">
+        <BookOpen className="mx-auto h-10 w-10 text-[#B77D7D]" />
+        <h1 className="mt-4 font-serif text-2xl font-bold text-[#382C24]">This memory book is temporarily unavailable</h1>
+        <p className="mt-2 font-body text-sm text-[#7E6C5F]">Please try again later or contact the owner.</p>
+      </div>
+    </div>
+  );
+}
+
 function BirthdayBookRoutes({ site, onReload }: { site: BirthdaySiteData; onReload: () => void }) {
   return (
     <Routes>
@@ -57,21 +69,28 @@ function BirthdaySite() {
   const { slug = '' } = useParams();
   const [site, setSite] = useState<BirthdaySiteData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
 
-  const loadSite = async () => {
+  const loadSite = useCallback(async () => {
     setLoading(true);
+    setLoadError(false);
     try {
       setSite(await getPublicBirthdaySite(slug));
+    } catch (error) {
+      console.error('Failed to load birthday website:', error);
+      setSite(null);
+      setLoadError(true);
     } finally {
       setLoading(false);
     }
-  };
-
-  useEffect(() => {
-    loadSite();
   }, [slug]);
 
+  useEffect(() => {
+    void loadSite();
+  }, [loadSite]);
+
   if (loading) return <LoadingBook />;
+  if (loadError) return <SiteUnavailable />;
   if (!site) return <NotFound />;
 
   const basePath = `/birthday/${site.page.slug}`;
@@ -92,17 +111,22 @@ function BirthdaySite() {
 function LegacyBirthdayRedirect() {
   const location = useLocation();
   const [targetSlug, setTargetSlug] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState(false);
 
   useEffect(() => {
     let isActive = true;
     getDefaultPublishedBirthdayPage().then((page) => {
       if (isActive) setTargetSlug(page?.slug || '');
+    }).catch((error: unknown) => {
+      console.error('Failed to find the default birthday website:', error);
+      if (isActive) setLoadError(true);
     });
     return () => {
       isActive = false;
     };
   }, []);
 
+  if (loadError) return <SiteUnavailable />;
   if (targetSlug === null) return <LoadingBook />;
   if (!targetSlug) return <Navigate to="/" replace />;
   return <Navigate to={`/birthday/${targetSlug}${location.pathname === '/' ? '' : location.pathname}`} replace />;

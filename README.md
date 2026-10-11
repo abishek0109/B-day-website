@@ -34,6 +34,8 @@ The repository includes a Supabase client, local project configuration, and sche
 
 1. Create or use the existing Supabase project.
 2. Run the migration files in [`supabase/migrations`](./supabase/migrations) in timestamp order. The multi-person upgrade is [`supabase/migrations/20261011143000_multi_person_birthday_platform.sql`](./supabase/migrations/20261011143000_multi_person_birthday_platform.sql). It creates `birthday_pages`, migrates existing one-person records into `legacy-birthday-page`, adds `birthday_page_id` scopes, updates RLS policies, and keeps existing content intact.
+
+   GitHub Pages builds only the frontend; it does not apply Supabase migrations. For an existing project that has the initial schema but not the multi-person schema, run `20261011143000_multi_person_birthday_platform.sql` in the Supabase SQL Editor before using the owner dashboard. The migration assigns existing unscoped content to the legacy page and does not delete content.
 3. Ensure the Supabase Auth account with UID `5d237790-3b23-46b0-8941-3f3a41a5cd62` exists.
 4. In the SQL Editor, grant that account the trusted owner role. This statement changes only that user's trusted app metadata; it raises an error if the UID does not exist:
 

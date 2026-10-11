@@ -124,13 +124,9 @@ function filterByPage<T extends { birthday_page_id?: string }>(items: T[], birth
 
 export async function getBirthdayPages(): Promise<BirthdayPage[]> {
   if (isSupabaseConfigured && supabase) {
-    try {
-      const { data, error } = await supabase.from('birthday_pages').select('*').order('created_at', { ascending: false });
-      if (error) throw error;
-      return (data || []) as BirthdayPage[];
-    } catch (err) {
-      console.warn('Supabase birthday pages fetch failed, falling back to local:', err);
-    }
+    const { data, error } = await supabase.from('birthday_pages').select('*').order('created_at', { ascending: false });
+    if (error) throw new Error(`Failed to load birthday websites from Supabase: ${error.message}`);
+    return (data || []) as BirthdayPage[];
   }
   return getLocalStorage<BirthdayPage[]>(LOCAL_STORAGE_KEYS.BIRTHDAY_PAGES, initialBirthdayPages);
 }
@@ -150,15 +146,11 @@ export async function getAvailableSlug(name: string, currentPageId?: string): Pr
 export async function getBirthdayPageBySlug(slug: string, publishedOnly = false): Promise<BirthdayPage | null> {
   const normalized = slugify(slug);
   if (isSupabaseConfigured && supabase) {
-    try {
-      let query = supabase.from('birthday_pages').select('*').eq('slug', normalized).limit(1);
-      if (publishedOnly) query = query.eq('is_published', true);
-      const { data, error } = await query.maybeSingle();
-      if (error) throw error;
-      return data as BirthdayPage | null;
-    } catch (err) {
-      console.warn('Supabase birthday page lookup failed, falling back to local:', err);
-    }
+    let query = supabase.from('birthday_pages').select('*').eq('slug', normalized).limit(1);
+    if (publishedOnly) query = query.eq('is_published', true);
+    const { data, error } = await query.maybeSingle();
+    if (error) throw new Error(`Failed to load birthday website from Supabase: ${error.message}`);
+    return data as BirthdayPage | null;
   }
   const page = (await getBirthdayPages()).find((item) => item.slug.toLowerCase() === normalized);
   return page && (!publishedOnly || page.is_published) ? page : null;
@@ -196,9 +188,9 @@ export async function createBirthdayPage(name: string): Promise<{ success: boole
   const trimmed = name.trim() || 'Birthday Friend';
   const slug = await getAvailableSlug(trimmed);
   return saveBirthdayPage({
-    ...initialBirthdayPages[0],
     id: crypto.randomUUID(),
     slug,
+    ...initialSiteSettings,
     recipient_name: trimmed,
     intro_dedication: `For ${trimmed}`,
     is_published: false,
@@ -241,17 +233,13 @@ async function getRows<T extends { birthday_page_id?: string; is_published?: boo
   options: { publishedOnly?: boolean; includePending?: boolean } = {},
 ): Promise<T[]> {
   if (isSupabaseConfigured && supabase) {
-    try {
-      let query = supabase.from(table).select('*').eq('birthday_page_id', birthdayPageId);
-      if (options.publishedOnly) query = query.eq('is_published', true);
-      if (options.includePending === false) query = query.eq('status', 'approved');
-      const orderColumn = table === 'birthday_wishes' ? 'created_at' : 'sort_order';
-      const { data, error } = await query.order(orderColumn, { ascending: table !== 'birthday_wishes' });
-      if (error) throw error;
-      return (data || []) as T[];
-    } catch (err) {
-      console.warn(`Supabase ${table} fetch failed, falling back to local:`, err);
-    }
+    let query = supabase.from(table).select('*').eq('birthday_page_id', birthdayPageId);
+    if (options.publishedOnly) query = query.eq('is_published', true);
+    if (options.includePending === false) query = query.eq('status', 'approved');
+    const orderColumn = table === 'birthday_wishes' ? 'created_at' : 'sort_order';
+    const { data, error } = await query.order(orderColumn, { ascending: table !== 'birthday_wishes' });
+    if (error) throw new Error(`Failed to load ${table} from Supabase: ${error.message}`);
+    return (data || []) as T[];
   }
   let rows = filterByPage(localRows<T>(key, defaults), birthdayPageId);
   if (options.publishedOnly) rows = rows.filter((row) => row.is_published);
@@ -277,8 +265,9 @@ async function saveRow<T extends { id: string; birthday_page_id?: string }>(
     }
   }
   const rows = localRows<T>(key, defaults);
-  const updated = rows.some((item) => item.id === scopedRow.id)
-    ? rows.map((item) => item.id === scopedRow.id ? scopedRow : item)
+  const isSamePageRow = (item: T) => item.id === scopedRow.id && scopedId(item.birthday_page_id) === birthdayPageId;
+  const updated = rows.some(isSamePageRow)
+    ? rows.map((item) => isSamePageRow(item) ? scopedRow : item)
     : [...rows, scopedRow];
   setLocalStorage(key, updated);
   return { success: true, data: scopedRow };
@@ -300,7 +289,9 @@ async function deleteRow(
       return { success: false, error: err instanceof Error ? err.message : `Failed to delete ${table}` };
     }
   }
-  setLocalStorage(key, localRows(key, defaults).filter((item) => item.id !== id));
+  setLocalStorage(key, localRows(key, defaults).filter((item) => (
+    item.id !== id || scopedId(item.birthday_page_id) !== birthdayPageId
+  )));
   return { success: true };
 }
 
@@ -368,7 +359,9 @@ export async function updateWishStatus(id: string, status: 'approved' | 'rejecte
     }
   }
   const rows = localRows<BirthdayWish>(LOCAL_STORAGE_KEYS.WISHES, initialWishes);
-  setLocalStorage(LOCAL_STORAGE_KEYS.WISHES, rows.map((wish) => wish.id === id ? { ...wish, status } : wish));
+  setLocalStorage(LOCAL_STORAGE_KEYS.WISHES, rows.map((wish) => (
+    wish.id === id && scopedId(wish.birthday_page_id) === birthdayPageId ? { ...wish, status } : wish
+  )));
   return { success: true };
 }
 
@@ -377,13 +370,9 @@ export const deleteWish = (id: string, birthdayPageId = DEFAULT_PAGE_ID) =>
 
 export async function getPersonalLetter(birthdayPageId = DEFAULT_PAGE_ID): Promise<PersonalLetter> {
   if (isSupabaseConfigured && supabase) {
-    try {
-      const { data, error } = await supabase.from('personal_letter').select('*').eq('birthday_page_id', birthdayPageId).limit(1).maybeSingle();
-      if (error) throw error;
-      return data as PersonalLetter || { ...initialPersonalLetter, birthday_page_id: birthdayPageId };
-    } catch (err) {
-      console.warn('Supabase letter fetch failed, falling back to local:', err);
-    }
+    const { data, error } = await supabase.from('personal_letter').select('*').eq('birthday_page_id', birthdayPageId).limit(1).maybeSingle();
+    if (error) throw new Error(`Failed to load personal letter from Supabase: ${error.message}`);
+    return data as PersonalLetter || { ...initialPersonalLetter, birthday_page_id: birthdayPageId };
   }
   const letters = localRows<PersonalLetter & { id: string }>(LOCAL_STORAGE_KEYS.LETTERS, [{ ...initialPersonalLetter, id: 'default-letter' }]);
   return letters.find((letter) => letter.birthday_page_id === birthdayPageId) || { ...initialPersonalLetter, id: crypto.randomUUID(), birthday_page_id: birthdayPageId };

@@ -69,6 +69,14 @@ function newId(prefix: string) {
   return `${prefix}_${crypto.randomUUID()}`;
 }
 
+function describeDataError(error: unknown) {
+  const message = error instanceof Error ? error.message : 'Unexpected Supabase error.';
+  if (/PGRST20[45]|birthday_page_id|could not find the table|schema cache/i.test(message)) {
+    return `The multi-birthday Supabase schema is missing or out of date. Apply the migrations in supabase/migrations through the Supabase SQL Editor, then reload. Details: ${message}`;
+  }
+  return `Could not load birthday website data. Details: ${message}`;
+}
+
 export const AdminDashboard: React.FC = () => {
   const [authState, setAuthState] = useState<AuthState>(emptyAuth);
   const [loginEmail, setLoginEmail] = useState('');
@@ -77,6 +85,7 @@ export const AdminDashboard: React.FC = () => {
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [notice, setNotice] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [dataLoadError, setDataLoadError] = useState<string | null>(null);
 
   const [pages, setPages] = useState<BirthdayPage[]>([]);
   const [selectedPageId, setSelectedPageId] = useState('');
@@ -107,13 +116,30 @@ export const AdminDashboard: React.FC = () => {
   };
 
   const loadPages = async () => {
-    const loaded = await getBirthdayPages();
-    setPages(loaded);
-    setSelectedPageId((current) => current || loaded[0]?.id || '');
+    try {
+      const loaded = await getBirthdayPages();
+      setPages(loaded);
+      setDataLoadError(null);
+      setSelectedPageId((current) => loaded.some((page) => page.id === current) ? current : loaded[0]?.id || '');
+      if (loaded.length === 0) setIsLoading(false);
+      return true;
+    } catch (error) {
+      setPages([]);
+      setSelectedPageId('');
+      setDataLoadError(describeDataError(error));
+      setIsLoading(false);
+      return false;
+    }
   };
 
-  const loadSelectedPageData = async (pageId: string) => {
+  const loadSelectedPageData = async (pageId: string): Promise<boolean> => {
     setIsLoading(true);
+    setSettings(null);
+    setPhotos([]);
+    setTimeline([]);
+    setVideos([]);
+    setWishes([]);
+    setLetter(null);
     try {
       const [pageSettings, pagePhotos, pageTimeline, pageVideos, pageWishes, pageLetter] = await Promise.all([
         getSiteSettings(pageId),
@@ -129,6 +155,17 @@ export const AdminDashboard: React.FC = () => {
       setVideos(pageVideos);
       setWishes(pageWishes);
       setLetter(pageLetter);
+      setDataLoadError(null);
+      return true;
+    } catch (error) {
+      setSettings(null);
+      setPhotos([]);
+      setTimeline([]);
+      setVideos([]);
+      setWishes([]);
+      setLetter(null);
+      setDataLoadError(describeDataError(error));
+      return false;
     } finally {
       setIsLoading(false);
     }
@@ -164,38 +201,72 @@ export const AdminDashboard: React.FC = () => {
   const handleCreatePage = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!newFriendName.trim()) return;
-    const res = await createBirthdayPage(newFriendName);
-    if (!res.success || !res.data) {
-      notify('error', res.error || 'Could not create birthday website.');
-      return;
+    try {
+      const res = await createBirthdayPage(newFriendName);
+      if (!res.success || !res.data) {
+        notify('error', res.error || 'Could not create birthday website.');
+        return;
+      }
+      setNewFriendName('');
+      await loadPages();
+      setSelectedPageId(res.data.id);
+      notify('success', `${res.data.recipient_name}'s birthday website was created as a draft.`);
+    } catch (error) {
+      const message = describeDataError(error);
+      setDataLoadError(message);
+      notify('error', message);
     }
-    setNewFriendName('');
-    await loadPages();
-    setSelectedPageId(res.data.id);
-    notify('success', `${res.data.recipient_name}'s birthday website was created as a draft.`);
   };
 
   const handleSavePageBasics = async () => {
     if (!selectedPage) return;
-    const slug = await getAvailableSlug(selectedPage.slug, selectedPage.id);
-    const res = await saveBirthdayPage({ ...selectedPage, slug });
-    if (!res.success) {
-      notify('error', res.error || 'Could not save page details.');
-      return;
+    try {
+      const slug = await getAvailableSlug(selectedPage.slug, selectedPage.id);
+      const res = await saveBirthdayPage({ ...selectedPage, slug });
+      if (!res.success) {
+        notify('error', res.error || 'Could not save page details.');
+        return;
+      }
+      await loadPages();
+      notify('success', 'Birthday website details saved.');
+    } catch (error) {
+      const message = describeDataError(error);
+      setDataLoadError(message);
+      notify('error', message);
     }
-    await loadPages();
-    notify('success', 'Birthday website details saved.');
   };
 
   const handleSaveSettings = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!settings || !selectedPageId) return;
-    const res = await updateSiteSettings(settings, selectedPageId);
-    if (res.success) {
-      await loadPages();
-      notify('success', 'Content saved for the selected birthday website.');
-    } else {
-      notify('error', res.error || 'Could not save content.');
+    try {
+      const res = await updateSiteSettings(settings, selectedPageId);
+      if (res.success) {
+        await loadPages();
+        notify('success', 'Content saved for the selected birthday website.');
+      } else {
+        notify('error', res.error || 'Could not save content.');
+      }
+    } catch (error) {
+      const message = describeDataError(error);
+      setDataLoadError(message);
+      notify('error', message);
+    }
+  };
+
+  const runSelectedMutation = async (
+    mutation: () => Promise<{ success: boolean; error?: string }>,
+    successMessage: string,
+  ) => {
+    try {
+      const result = await mutation();
+      if (!result.success) {
+        notify('error', result.error || 'Could not save changes.');
+        return;
+      }
+      if (await loadSelectedPageData(selectedPageId)) notify('success', successMessage);
+    } catch (error) {
+      notify('error', describeDataError(error));
     }
   };
 
@@ -300,13 +371,22 @@ export const AdminDashboard: React.FC = () => {
         </div>
       )}
 
+      {dataLoadError && (
+        <div role="alert" className="max-w-7xl mx-auto mt-5 px-4 sm:px-6 w-full">
+          <div className="flex items-start gap-2 rounded-xs border border-[#E8A5A5] bg-[#FDF2F2] p-4 text-sm text-[#8C3A3A]">
+            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+            <p>{dataLoadError}</p>
+          </div>
+        </div>
+      )}
+
       <main className="max-w-7xl mx-auto px-4 sm:px-6 mt-6 grid grid-cols-1 lg:grid-cols-[340px_1fr] gap-6">
         <aside className="space-y-4">
           <form onSubmit={handleCreatePage} className="bg-[#FAF7F2] border border-[#E8DEC8] p-4 rounded-xs shadow-scrapbook">
             <label className="block text-xs font-serif uppercase tracking-wider text-[#7E6C5F] mb-2">Create Friend Website</label>
             <div className="flex gap-2">
-              <input value={newFriendName} onChange={(event) => setNewFriendName(event.target.value)} placeholder="Friend's name" className="min-w-0 flex-1 px-3 py-2 bg-[#FAF6EC] border border-[#DECFBD] rounded-xs text-sm" />
-              <button className="inline-flex items-center justify-center w-10 rounded-xs bg-[#B77D7D] text-[#FAF6EC]" aria-label="Create birthday website">
+              <input required value={newFriendName} onChange={(event) => setNewFriendName(event.target.value)} placeholder="Friend's name" className="min-w-0 flex-1 px-3 py-2 bg-[#FAF6EC] border border-[#DECFBD] rounded-xs text-sm" />
+              <button type="submit" className="inline-flex items-center justify-center w-10 rounded-xs bg-[#B77D7D] text-[#FAF6EC]" aria-label="Create birthday website">
                 <Plus className="w-4 h-4" />
               </button>
             </div>
@@ -420,30 +500,30 @@ export const AdminDashboard: React.FC = () => {
 
               {currentTab === 'photos' && (
                 <CollectionEditor title="Photos" items={photos} onAdd={() => setPhotos((items) => [...items, { id: newId('photo'), birthday_page_id: selectedPageId, title: '', caption: '', image_url: '', category: 'Little Moments', sort_order: items.length + 1, is_published: false }])} render={(photo) => (
-                  <PhotoEditor photo={photo} onChange={(updated) => setPhotos((items) => items.map((item) => item.id === updated.id ? updated : item))} onSave={async () => { const res = await savePhoto(photo, selectedPageId); if (res.success) notify('success', 'Photo saved.'); else notify('error', res.error || 'Could not save photo.'); await loadSelectedPageData(selectedPageId); }} onDelete={async () => { await deletePhoto(photo.id, selectedPageId); await loadSelectedPageData(selectedPageId); }} onUpload={(event) => handleFileUpload(event, (url) => setPhotos((items) => items.map((item) => item.id === photo.id ? { ...item, image_url: url } : item)), 'photos')} />
+                  <PhotoEditor photo={photo} onChange={(updated) => setPhotos((items) => items.map((item) => item.id === updated.id ? updated : item))} onSave={() => runSelectedMutation(() => savePhoto(photo, selectedPageId), 'Photo saved.')} onDelete={() => runSelectedMutation(() => deletePhoto(photo.id, selectedPageId), 'Photo deleted.')} onUpload={(event) => handleFileUpload(event, (url) => setPhotos((items) => items.map((item) => item.id === photo.id ? { ...item, image_url: url } : item)), 'photos')} />
                 )} />
               )}
 
               {currentTab === 'timeline' && (
                 <CollectionEditor title="Timeline Stories" items={timeline} onAdd={() => setTimeline((items) => [...items, { id: newId('timeline'), birthday_page_id: selectedPageId, title: '', date: '', story: '', sort_order: items.length + 1, is_published: false }])} render={(entry) => (
-                  <TimelineEditor entry={entry} onChange={(updated) => setTimeline((items) => items.map((item) => item.id === updated.id ? updated : item))} onSave={async () => { const res = await saveTimelineMemory(entry, selectedPageId); if (res.success) notify('success', 'Timeline story saved.'); else notify('error', res.error || 'Could not save story.'); await loadSelectedPageData(selectedPageId); }} onDelete={async () => { await deleteTimelineMemory(entry.id, selectedPageId); await loadSelectedPageData(selectedPageId); }} />
+                  <TimelineEditor entry={entry} onChange={(updated) => setTimeline((items) => items.map((item) => item.id === updated.id ? updated : item))} onSave={() => runSelectedMutation(() => saveTimelineMemory(entry, selectedPageId), 'Timeline story saved.')} onDelete={() => runSelectedMutation(() => deleteTimelineMemory(entry.id, selectedPageId), 'Timeline story deleted.')} />
                 )} />
               )}
 
               {currentTab === 'videos' && (
                 <CollectionEditor title="Videos" items={videos} onAdd={() => setVideos((items) => [...items, { id: newId('video'), birthday_page_id: selectedPageId, title: '', description: '', video_url: '', sort_order: items.length + 1, is_published: false }])} render={(video) => (
-                  <VideoEditor video={video} onChange={(updated) => setVideos((items) => items.map((item) => item.id === updated.id ? updated : item))} onSave={async () => { const res = await saveVideo(video, selectedPageId); if (res.success) notify('success', 'Video saved.'); else notify('error', res.error || 'Could not save video.'); await loadSelectedPageData(selectedPageId); }} onDelete={async () => { await deleteVideo(video.id, selectedPageId); await loadSelectedPageData(selectedPageId); }} onUpload={(event) => handleFileUpload(event, (url) => setVideos((items) => items.map((item) => item.id === video.id ? { ...item, video_url: url } : item)), 'videos')} />
+                  <VideoEditor video={video} onChange={(updated) => setVideos((items) => items.map((item) => item.id === updated.id ? updated : item))} onSave={() => runSelectedMutation(() => saveVideo(video, selectedPageId), 'Video saved.')} onDelete={() => runSelectedMutation(() => deleteVideo(video.id, selectedPageId), 'Video deleted.')} onUpload={(event) => handleFileUpload(event, (url) => setVideos((items) => items.map((item) => item.id === video.id ? { ...item, video_url: url } : item)), 'videos')} />
                 )} />
               )}
 
               {currentTab === 'wishes' && (
-                <CollectionEditor title="Wishes" items={wishes} onAdd={() => setWishes((items) => [{ id: newId('wish'), birthday_page_id: selectedPageId, sender_name: '', message: '', paper_color: 'cream', status: 'approved', created_at: new Date().toISOString() }, ...items])} render={(wish) => (
-                  <WishEditor wish={wish} onChange={(updated) => setWishes((items) => items.map((item) => item.id === updated.id ? updated : item))} onSave={async () => { const res = await saveWish(wish, selectedPageId); if (res.success) notify('success', 'Wish saved.'); else notify('error', res.error || 'Could not save wish.'); await loadSelectedPageData(selectedPageId); }} onDelete={async () => { await deleteWish(wish.id, selectedPageId); await loadSelectedPageData(selectedPageId); }} onStatus={async (status) => { await updateWishStatus(wish.id, status, selectedPageId); await loadSelectedPageData(selectedPageId); }} />
+                <CollectionEditor title="Wishes" items={wishes} onAdd={() => setWishes((items) => [{ id: crypto.randomUUID(), birthday_page_id: selectedPageId, sender_name: '', message: '', paper_color: 'cream', status: 'approved', created_at: new Date().toISOString() }, ...items])} render={(wish) => (
+                  <WishEditor wish={wish} onChange={(updated) => setWishes((items) => items.map((item) => item.id === updated.id ? updated : item))} onSave={() => runSelectedMutation(() => saveWish(wish, selectedPageId), 'Wish saved.')} onDelete={() => runSelectedMutation(() => deleteWish(wish.id, selectedPageId), 'Wish deleted.')} onStatus={(status) => runSelectedMutation(() => updateWishStatus(wish.id, status, selectedPageId), `Wish ${status}.`)} />
                 )} />
               )}
 
               {currentTab === 'letter' && (
-                <form onSubmit={async (event) => { event.preventDefault(); if (!letter) return; const res = await updatePersonalLetter(letter, selectedPageId); if (res.success) notify('success', 'Letter saved.'); else notify('error', res.error || 'Could not save letter.'); }} className="bg-[#FAF7F2] border border-[#E8DEC8] p-5 rounded-xs shadow-scrapbook space-y-4">
+                <form onSubmit={async (event) => { event.preventDefault(); if (!letter) return; await runSelectedMutation(() => updatePersonalLetter(letter, selectedPageId), 'Personal letter saved.'); }} className="bg-[#FAF7F2] border border-[#E8DEC8] p-5 rounded-xs shadow-scrapbook space-y-4">
                   <h3 className="font-serif text-2xl font-bold text-[#382C24]">Personal Letter</h3>
                   <TextField label="Greeting" value={letter.greeting} onChange={(value) => setLetter({ ...letter, greeting: value })} />
                   <TextField label="Letter Date" value={letter.letter_date} onChange={(value) => setLetter({ ...letter, letter_date: value })} />
