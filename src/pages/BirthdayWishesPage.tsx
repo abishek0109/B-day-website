@@ -7,16 +7,19 @@ import { PaperNote } from '../components/scrapbook/PaperNote';
 import { PressedFlower } from '../components/scrapbook/PressedFlower';
 import confetti from 'canvas-confetti';
 import { isSupabaseConfigured } from '../lib/supabase';
+import { useBookRoute } from '../lib/routeContext';
 
 const isWishSubmissionConfigured = isSupabaseConfigured;
 
 interface BirthdayWishesPageProps {
   wishes: BirthdayWish[];
+  birthdayPageId: string;
   onWishSubmitted?: () => void;
 }
 
-export const BirthdayWishesPage: React.FC<BirthdayWishesPageProps> = ({ wishes, onWishSubmitted }) => {
+export const BirthdayWishesPage: React.FC<BirthdayWishesPageProps> = ({ wishes, birthdayPageId, onWishSubmitted }) => {
   const navigate = useNavigate();
+  const { toBookPath } = useBookRoute();
 
   // Form State
   const [senderName, setSenderName] = useState('');
@@ -44,6 +47,7 @@ export const BirthdayWishesPage: React.FC<BirthdayWishesPageProps> = ({ wishes, 
         relationship: relationship.trim() || undefined,
         message: message.trim(),
         paper_color: paperColor,
+        birthday_page_id: birthdayPageId,
       });
 
       if (res.success) {
@@ -82,7 +86,7 @@ export const BirthdayWishesPage: React.FC<BirthdayWishesPageProps> = ({ wishes, 
         {/* Chapter Header */}
         <div className="flex items-center justify-between border-b border-[#E3D9CC] pb-4 mb-8">
           <button
-            onClick={() => navigate('/videos')}
+            onClick={() => navigate(toBookPath('/videos'))}
             className="inline-flex items-center gap-1.5 text-xs font-serif uppercase tracking-wider text-[#7E6C5F] hover:text-[#3D3028] transition-colors"
           >
             <ArrowLeft className="w-3.5 h-3.5" /> Previous Chapter
@@ -294,7 +298,7 @@ export const BirthdayWishesPage: React.FC<BirthdayWishesPageProps> = ({ wishes, 
           </p>
 
           <button
-            onClick={() => navigate('/letter')}
+            onClick={() => navigate(toBookPath('/letter'))}
             className="group inline-flex items-center gap-2 px-6 py-3 bg-[#B77D7D] hover:bg-[#A36B6B] text-[#FAF6EC] font-serif text-base rounded-sm shadow-scrapbook hover:shadow-scrapbook-lift transition-all hover:scale-[1.02] cursor-pointer"
           >
             <span>Read The Personal Letter</span>

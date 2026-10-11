@@ -24,6 +24,7 @@ export type MemoryCategory = 'All' | 'Little Moments' | 'Adventures' | 'Celebrat
 
 export interface PhotoMemory {
   id: string;
+  birthday_page_id?: string;
   title: string;
   caption: string;
   image_url: string;
@@ -39,6 +40,7 @@ export interface PhotoMemory {
 
 export interface TimelineMemory {
   id: string;
+  birthday_page_id?: string;
   title: string;
   date: string;
   story: string;
@@ -52,6 +54,7 @@ export interface TimelineMemory {
 
 export interface VideoMemory {
   id: string;
+  birthday_page_id?: string;
   title: string;
   description: string;
   video_url: string; // direct MP4 or embeddable URL
@@ -65,6 +68,7 @@ export interface VideoMemory {
 
 export interface BirthdayWish {
   id: string;
+  birthday_page_id?: string;
   sender_name: string;
   relationship?: string;
   message: string;
@@ -77,6 +81,7 @@ export interface BirthdayWish {
 
 export interface PersonalLetter {
   id?: string;
+  birthday_page_id?: string;
   greeting: string;
   paragraphs: string[];
   sign_off: string;
@@ -87,6 +92,7 @@ export interface PersonalLetter {
 
 export interface BirthdayPage {
   id: string;
+  owner_id?: string;
   slug: string;
   recipient_name: string;
   sender_name?: string;
@@ -108,4 +114,14 @@ export interface BirthdayPage {
   is_published: boolean;
   created_at?: string;
   updated_at?: string;
+}
+
+export interface BirthdaySiteData {
+  page: BirthdayPage;
+  settings: SiteSettings;
+  photos: PhotoMemory[];
+  timeline: TimelineMemory[];
+  videos: VideoMemory[];
+  wishes: BirthdayWish[];
+  letter: PersonalLetter;
 }

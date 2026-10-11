@@ -6,6 +6,7 @@ import { PaperNote } from '../components/scrapbook/PaperNote';
 import { WashiTape } from '../components/scrapbook/WashiTape';
 import { PressedFlower } from '../components/scrapbook/PressedFlower';
 import { ScrapbookImage } from '../components/scrapbook/ScrapbookImage';
+import { useBookRoute } from '../lib/routeContext';
 
 interface TimelinePageProps {
   timeline: TimelineMemory[];
@@ -13,6 +14,7 @@ interface TimelinePageProps {
 
 export const TimelinePage: React.FC<TimelinePageProps> = ({ timeline }) => {
   const navigate = useNavigate();
+  const { toBookPath } = useBookRoute();
 
   return (
     <div className="min-h-[calc(100vh-4rem)] py-12 px-4 sm:px-6 lg:px-8 bg-[#F8F4EC] relative">
@@ -26,7 +28,7 @@ export const TimelinePage: React.FC<TimelinePageProps> = ({ timeline }) => {
         {/* Chapter Header */}
         <div className="flex items-center justify-between border-b border-[#E3D9CC] pb-4 mb-8">
           <button
-            onClick={() => navigate('/photos')}
+            onClick={() => navigate(toBookPath('/photos'))}
             className="inline-flex items-center gap-1.5 text-xs font-serif uppercase tracking-wider text-[#7E6C5F] hover:text-[#3D3028] transition-colors"
           >
             <ArrowLeft className="w-3.5 h-3.5" /> Previous Chapter
@@ -168,7 +170,7 @@ export const TimelinePage: React.FC<TimelinePageProps> = ({ timeline }) => {
           </p>
 
           <button
-            onClick={() => navigate('/videos')}
+            onClick={() => navigate(toBookPath('/videos'))}
             className="group inline-flex items-center gap-2 px-6 py-3 bg-[#B77D7D] hover:bg-[#A36B6B] text-[#FAF6EC] font-serif text-base rounded-sm shadow-scrapbook hover:shadow-scrapbook-lift transition-all hover:scale-[1.02] cursor-pointer"
           >
             <span>Watch Moments in Motion</span>

@@ -6,6 +6,7 @@ import { VideoModal } from '../components/scrapbook/VideoModal';
 import { WashiTape } from '../components/scrapbook/WashiTape';
 import { PressedFlower } from '../components/scrapbook/PressedFlower';
 import { ScrapbookImage } from '../components/scrapbook/ScrapbookImage';
+import { useBookRoute } from '../lib/routeContext';
 
 interface VideoMemoriesPageProps {
   videos: VideoMemory[];
@@ -13,6 +14,7 @@ interface VideoMemoriesPageProps {
 
 export const VideoMemoriesPage: React.FC<VideoMemoriesPageProps> = ({ videos }) => {
   const navigate = useNavigate();
+  const { toBookPath } = useBookRoute();
   const [selectedVideo, setSelectedVideo] = useState<VideoMemory | null>(null);
 
   return (
@@ -26,7 +28,7 @@ export const VideoMemoriesPage: React.FC<VideoMemoriesPageProps> = ({ videos }) 
         {/* Chapter Header */}
         <div className="flex items-center justify-between border-b border-[#E3D9CC] pb-4 mb-8">
           <button
-            onClick={() => navigate('/timeline')}
+            onClick={() => navigate(toBookPath('/timeline'))}
             className="inline-flex items-center gap-1.5 text-xs font-serif uppercase tracking-wider text-[#7E6C5F] hover:text-[#3D3028] transition-colors"
           >
             <ArrowLeft className="w-3.5 h-3.5" /> Previous Chapter
@@ -160,7 +162,7 @@ export const VideoMemoriesPage: React.FC<VideoMemoriesPageProps> = ({ videos }) 
           </p>
 
           <button
-            onClick={() => navigate('/wishes')}
+            onClick={() => navigate(toBookPath('/wishes'))}
             className="group inline-flex items-center gap-2 px-6 py-3 bg-[#B77D7D] hover:bg-[#A36B6B] text-[#FAF6EC] font-serif text-base rounded-sm shadow-scrapbook hover:shadow-scrapbook-lift transition-all hover:scale-[1.02] cursor-pointer"
           >
             <span>Read Birthday Wishes</span>

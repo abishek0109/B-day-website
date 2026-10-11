@@ -7,6 +7,7 @@ import { DoodleHeart } from '../components/scrapbook/DoodleHeart';
 import { PressedFlower } from '../components/scrapbook/PressedFlower';
 import { StampBadge } from '../components/scrapbook/StampBadge';
 import confetti from 'canvas-confetti';
+import { useBookRoute } from '../lib/routeContext';
 
 interface ClosingPageProps {
   settings: SiteSettings;
@@ -14,6 +15,7 @@ interface ClosingPageProps {
 
 export const ClosingPage: React.FC<ClosingPageProps> = ({ settings }) => {
   const navigate = useNavigate();
+  const { toBookPath } = useBookRoute();
 
   const handleBurstConfetti = () => {
     confetti({
@@ -86,7 +88,7 @@ export const ClosingPage: React.FC<ClosingPageProps> = ({ settings }) => {
 
           {/* Revisit Journey */}
           <button
-            onClick={() => navigate('/')}
+            onClick={() => navigate(toBookPath('/'))}
             className="group inline-flex items-center gap-2 px-7 py-3.5 bg-[#B77D7D] hover:bg-[#A36B6B] text-[#FAF6EC] font-serif text-base rounded-sm shadow-scrapbook hover:shadow-scrapbook-lift transition-all hover:scale-105 cursor-pointer"
           >
             <RotateCcw className="w-4 h-4 transition-transform group-hover:-rotate-90" />

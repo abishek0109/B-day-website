@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { BookOpen, Volume2, VolumeX, Lock, Sparkles, Menu, X } from 'lucide-react';
 import confetti from 'canvas-confetti';
+import { useBookRoute } from '../../lib/routeContext';
 
 interface NavbarProps {
   audioUrl?: string;
@@ -10,6 +11,7 @@ interface NavbarProps {
 
 export const Navbar: React.FC<NavbarProps> = ({ audioUrl, onTriggerConfetti }) => {
   const location = useLocation();
+  const { toBookPath } = useBookRoute();
   const [isPlayingMusic, setIsPlayingMusic] = useState(false);
   const [failedAudioUrl, setFailedAudioUrl] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -88,7 +90,7 @@ export const Navbar: React.FC<NavbarProps> = ({ audioUrl, onTriggerConfetti }) =
         
         {/* Title Logo */}
         <Link 
-          to="/" 
+          to={toBookPath('/')} 
           className="group flex items-center gap-2.5 text-[#514137] hover:text-[#3D3028] transition-colors"
         >
           <div className="w-8 h-8 rounded-full bg-[#EAD6D2] border border-[#B77D7D]/30 flex items-center justify-center shadow-xs group-hover:scale-105 transition-transform">
@@ -107,11 +109,12 @@ export const Navbar: React.FC<NavbarProps> = ({ audioUrl, onTriggerConfetti }) =
         {/* Desktop Nav Links */}
         <nav className="hidden lg:flex items-center gap-1 xl:gap-2">
           {navLinks.map((link) => {
-            const isActive = location.pathname === link.path;
+            const routePath = toBookPath(link.path);
+            const isActive = location.pathname === routePath;
             return (
               <Link
                 key={link.path}
-                to={link.path}
+                to={routePath}
                 aria-current={isActive ? 'page' : undefined}
                 className={`relative px-3 py-1.5 text-xs font-serif tracking-wider uppercase transition-colors rounded-sm ${
                   isActive
@@ -199,11 +202,12 @@ export const Navbar: React.FC<NavbarProps> = ({ audioUrl, onTriggerConfetti }) =
         <nav id="mobile-navigation" aria-label="Mobile navigation" className="lg:hidden bg-[#FAF6EC] border-b border-[#E3D9CC] px-4 py-3 shadow-md animate-in slide-in-from-top-2 duration-150">
           <div className="grid grid-cols-2 gap-2">
             {navLinks.map((link) => {
-              const isActive = location.pathname === link.path;
+              const routePath = toBookPath(link.path);
+              const isActive = location.pathname === routePath;
               return (
                 <Link
                   key={link.path}
-                  to={link.path}
+                  to={routePath}
                   onClick={() => setIsMobileMenuOpen(false)}
                   aria-current={isActive ? 'page' : undefined}
                   className={`px-3 py-2 text-sm font-serif rounded-md transition-colors ${

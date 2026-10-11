@@ -7,6 +7,7 @@ import { PressedFlower } from '../components/scrapbook/PressedFlower';
 import { WashiTape } from '../components/scrapbook/WashiTape';
 import { DoodleHeart } from '../components/scrapbook/DoodleHeart';
 import { StampBadge } from '../components/scrapbook/StampBadge';
+import { useBookRoute } from '../lib/routeContext';
 
 interface LandingPageProps {
   settings: SiteSettings;
@@ -14,6 +15,7 @@ interface LandingPageProps {
 
 export const LandingPage: React.FC<LandingPageProps> = ({ settings }) => {
   const navigate = useNavigate();
+  const { toBookPath } = useBookRoute();
 
   return (
     <div className="relative min-h-[calc(100vh-4rem)] flex flex-col justify-center px-4 sm:px-6 lg:px-8 py-10 overflow-hidden bg-[#F8F4EC]">
@@ -81,7 +83,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ settings }) => {
             {/* CTA Button & Handwritten Caption */}
             <div className="flex flex-col items-start gap-3">
               <button
-                onClick={() => navigate('/intro')}
+                onClick={() => navigate(toBookPath('/intro'))}
                 className="group relative inline-flex items-center gap-3 px-8 py-4 bg-[#B77D7D] hover:bg-[#A36B6B] text-[#FAF6EC] font-serif text-lg tracking-wide rounded-sm shadow-scrapbook hover:shadow-scrapbook-lift transition-all duration-300 hover:scale-[1.02] cursor-pointer"
               >
                 <span>Open Your Memory Book</span>
@@ -126,7 +128,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ settings }) => {
                 tape_style="rose"
                 size="large"
                 className="max-w-[340px] sm:max-w-[420px] shadow-scrapbook-lg"
-                onClick={() => navigate('/intro')}
+                onClick={() => navigate(toBookPath('/intro'))}
               />
 
               {/* Overlapping Handwritten Mini Sticky Note */}

@@ -5,6 +5,7 @@ import { ArrowLeft, ArrowRight, Bookmark, Image as ImageIcon, Filter, Sparkles }
 import { PolaroidPhoto } from '../components/scrapbook/PolaroidPhoto';
 import { PhotoLightbox } from '../components/scrapbook/PhotoLightbox';
 import { PressedFlower } from '../components/scrapbook/PressedFlower';
+import { useBookRoute } from '../lib/routeContext';
 
 interface PhotoGalleryPageProps {
   photos: PhotoMemory[];
@@ -12,6 +13,7 @@ interface PhotoGalleryPageProps {
 
 export const PhotoGalleryPage: React.FC<PhotoGalleryPageProps> = ({ photos }) => {
   const navigate = useNavigate();
+  const { toBookPath } = useBookRoute();
   const [selectedCategory, setSelectedCategory] = useState<MemoryCategory>('All');
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
 
@@ -51,7 +53,7 @@ export const PhotoGalleryPage: React.FC<PhotoGalleryPageProps> = ({ photos }) =>
         {/* Chapter Header */}
         <div className="flex items-center justify-between border-b border-[#E3D9CC] pb-4 mb-8">
           <button
-            onClick={() => navigate('/intro')}
+            onClick={() => navigate(toBookPath('/intro'))}
             className="inline-flex items-center gap-1.5 text-xs font-serif uppercase tracking-wider text-[#7E6C5F] hover:text-[#3D3028] transition-colors"
           >
             <ArrowLeft className="w-3.5 h-3.5" /> Previous Chapter
@@ -161,7 +163,7 @@ export const PhotoGalleryPage: React.FC<PhotoGalleryPageProps> = ({ photos }) =>
           </p>
 
           <button
-            onClick={() => navigate('/timeline')}
+            onClick={() => navigate(toBookPath('/timeline'))}
             className="group inline-flex items-center gap-2 px-6 py-3 bg-[#B77D7D] hover:bg-[#A36B6B] text-[#FAF6EC] font-serif text-base rounded-sm shadow-scrapbook hover:shadow-scrapbook-lift transition-all hover:scale-[1.02] cursor-pointer"
           >
             <span>Read The Timeline</span>

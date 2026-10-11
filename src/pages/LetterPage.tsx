@@ -5,6 +5,7 @@ import { ArrowLeft, ArrowRight, Bookmark, Heart } from 'lucide-react';
 import { PressedFlower } from '../components/scrapbook/PressedFlower';
 import { WashiTape } from '../components/scrapbook/WashiTape';
 import { StampBadge } from '../components/scrapbook/StampBadge';
+import { useBookRoute } from '../lib/routeContext';
 
 interface LetterPageProps {
   letter: PersonalLetter;
@@ -12,6 +13,7 @@ interface LetterPageProps {
 
 export const LetterPage: React.FC<LetterPageProps> = ({ letter }) => {
   const navigate = useNavigate();
+  const { toBookPath } = useBookRoute();
 
   return (
     <div className="min-h-[calc(100vh-4rem)] py-12 px-4 sm:px-6 lg:px-8 bg-[#F8F4EC] relative flex flex-col justify-center">
@@ -25,7 +27,7 @@ export const LetterPage: React.FC<LetterPageProps> = ({ letter }) => {
         {/* Chapter Header */}
         <div className="flex items-center justify-between border-b border-[#E3D9CC] pb-4 mb-8">
           <button
-            onClick={() => navigate('/wishes')}
+            onClick={() => navigate(toBookPath('/wishes'))}
             className="inline-flex items-center gap-1.5 text-xs font-serif uppercase tracking-wider text-[#7E6C5F] hover:text-[#3D3028] transition-colors"
           >
             <ArrowLeft className="w-3.5 h-3.5" /> Previous Chapter
@@ -125,7 +127,7 @@ export const LetterPage: React.FC<LetterPageProps> = ({ letter }) => {
           </p>
 
           <button
-            onClick={() => navigate('/closing')}
+            onClick={() => navigate(toBookPath('/closing'))}
             className="group inline-flex items-center gap-2 px-6 py-3 bg-[#B77D7D] hover:bg-[#A36B6B] text-[#FAF6EC] font-serif text-base rounded-sm shadow-scrapbook hover:shadow-scrapbook-lift transition-all hover:scale-[1.02] cursor-pointer"
           >
             <span>The Closing Page</span>
