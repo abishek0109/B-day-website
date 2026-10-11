@@ -29,7 +29,7 @@ Open `http://localhost:5173/`. The public book is viewable without a backend, wi
 The repository includes a Supabase client, local project configuration, and schema. To enable content management:
 
 1. Create a Supabase project.
-2. Run [`supabase_schema.sql`](./supabase_schema.sql) in the Supabase SQL Editor. It creates missing tables, updates the named RLS policies, and creates the `memories-media` storage bucket; it does not delete content or seed names, memories, photos, videos, wishes, or a letter.
+2. The schema is versioned in [`supabase/migrations`](./supabase/migrations). For this connected project, Supabase applies new migrations pushed to the configured production branch. For a separate project without GitHub deployment, run [`supabase_schema.sql`](./supabase_schema.sql) in the Supabase SQL Editor. The schema creates missing tables, updates named RLS policies, and creates the `memories-media` storage bucket; it does not delete content or seed names, memories, photos, videos, wishes, or a letter.
 3. Ensure the Supabase Auth account with UID `5d237790-3b23-46b0-8941-3f3a41a5cd62` exists.
 4. In the SQL Editor, grant that account the trusted owner role. This statement changes only that user's trusted app metadata; it raises an error if the UID does not exist:
 
@@ -56,6 +56,8 @@ The repository includes a Supabase client, local project configuration, and sche
    ```
 
 6. Restart the development server, then visit `/admin` and sign in as that account. If a session was already active, sign out and back in so the refreshed JWT includes `app_metadata.role`.
+
+This repository is connected to the Supabase GitHub integration with the repository root as its working directory and `main` as the production branch. Production deployment is enabled. Add future schema changes as new timestamped migration files; do not edit migrations that have already been applied. The root `supabase_schema.sql` remains a standalone bootstrap script.
 
 Only the public Supabase anon/publishable key belongs in frontend configuration. **Never** use a Supabase service-role key in a `VITE_*` variable. The schema makes uploaded media publicly readable, so only upload content intended to be public once its URL is shared.
 
