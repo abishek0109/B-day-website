@@ -1,0 +1,115 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --bg-ivory: #F8F4EC;
+    --bg-cream: #F1E8DA;
+    --bg-blush: #EAD6D2;
+    --accent-rose: #B77D7D;
+    --accent-sage: #A7AD96;
+    --text-brown: #514137;
+    --text-dark: #382C24;
+    --text-muted: #7E6C5F;
+    --border-soft: #E3D9CC;
+  }
+
+  body {
+    background-color: #F8F4EC;
+    color: #514137;
+    font-family: 'Lora', Georgia, serif;
+    background-image: 
+      radial-gradient(#514137 0.45px, transparent 0.45px), 
+      radial-gradient(#514137 0.45px, #F8F4EC 0.45px);
+    background-size: 24px 24px;
+    background-position: 0 0, 12px 12px;
+    background-color: #F8F4EC;
+    min-height: 100vh;
+  }
+
+  /* Paper grain subtle overlay */
+  body::before {
+    content: "";
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    opacity: 0.035;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+    z-index: 999;
+  }
+
+  h1, h2, h3, h4, .font-serif {
+    font-family: 'Cormorant Garamond', 'Playfair Display', Georgia, serif;
+  }
+
+  :where(a, button, input, select, textarea, [tabindex]):focus-visible {
+    outline: 2px solid #B77D7D;
+    outline-offset: 3px;
+  }
+
+  .font-display {
+    font-family: 'Playfair Display', Georgia, serif;
+  }
+
+  .font-hand {
+    font-family: 'Caveat', cursive;
+  }
+
+  .font-body {
+    font-family: 'Lora', Georgia, serif;
+  }
+}
+
+/* Scrapbook Shadows & Paper Effects */
+.shadow-scrapbook {
+  box-shadow: 2px 4px 14px rgba(81, 65, 55, 0.12), 0 1px 3px rgba(81, 65, 55, 0.08);
+}
+
+.shadow-scrapbook-lg {
+  box-shadow: 4px 10px 28px rgba(81, 65, 55, 0.16), 0 2px 8px rgba(81, 65, 55, 0.08);
+}
+
+.shadow-scrapbook-lift {
+  box-shadow: 0 16px 36px rgba(81, 65, 55, 0.2), 0 4px 12px rgba(81, 65, 55, 0.1);
+}
+
+/* Lined Paper effect */
+.bg-lined-paper {
+  background-color: #FAF6EF;
+  background-image: repeating-linear-gradient(
+    transparent,
+    transparent 27px,
+    #E8DCDB 28px
+  );
+  line-height: 28px;
+}
+
+/* Washi Tape styling */
+.washi-tape {
+  position: absolute;
+  height: 24px;
+  background: rgba(234, 214, 210, 0.85);
+  box-shadow: 0 1px 3px rgba(81, 65, 55, 0.15);
+  backdrop-filter: blur(1px);
+  clip-path: polygon(4% 0%, 96% 0%, 100% 100%, 0% 100%);
+}
+
+.washi-tape-sage {
+  background: rgba(167, 173, 150, 0.85);
+}
+
+.washi-tape-cream {
+  background: rgba(241, 232, 218, 0.9);
+}
+
+.washi-tape-rose {
+  background: rgba(183, 125, 125, 0.8);
+}
+
+/* Subtle torn paper edge */
+.torn-edge-bottom {
+  mask-image: radial-gradient(circle 6px at bottom, transparent 6px, black 7px);
+  mask-size: 16px 100%;
+}
