@@ -1,5 +1,7 @@
 import { SiteSettings, PhotoMemory, TimelineMemory, VideoMemory, BirthdayWish, PersonalLetter } from '../types/scrapbook';
 
+const demoAsset = (filename: string) => `${import.meta.env.BASE_URL}demo-assets/${filename}`;
+
 export const initialSiteSettings: SiteSettings = {
   recipient_name: '',
   sender_name: '',
@@ -9,7 +11,7 @@ export const initialSiteSettings: SiteSettings = {
   hero_note: 'a little birthday something, just for you',
   hero_intro: 'A little corner of the internet for photographs, stories, and birthday wishes. The owner can add personal memories whenever they are ready.',
   hero_button_caption: 'Turn the page when you are ready.',
-  hero_photo_url: '/demo-assets/hero-friends.jpg',
+  hero_photo_url: demoAsset('hero-friends.jpg'),
   hero_photo_caption: 'Sample photo — replace with your own',
   hero_photo_date: '',
   intro_dedication: '',
@@ -25,7 +27,7 @@ export const initialPhotos: PhotoMemory[] = [
     id: '00000000-0000-4000-8000-000000000001',
     title: 'Sample photo',
     caption: 'Replace this sample image before sharing your book.',
-    image_url: '/demo-assets/hero-friends.jpg',
+    image_url: demoAsset('hero-friends.jpg'),
     category: 'Little Moments',
     rotation: -2.5,
     tape_style: 'rose',
@@ -36,7 +38,7 @@ export const initialPhotos: PhotoMemory[] = [
     id: '00000000-0000-4000-8000-000000000002',
     title: 'Sample photo',
     caption: 'Replace this sample image before sharing your book.',
-    image_url: '/demo-assets/adventure.jpg',
+    image_url: demoAsset('adventure.jpg'),
     category: 'Adventures',
     rotation: 1.8,
     tape_style: 'sage',
@@ -47,7 +49,7 @@ export const initialPhotos: PhotoMemory[] = [
     id: '00000000-0000-4000-8000-000000000003',
     title: 'Sample photo',
     caption: 'Replace this sample image before sharing your book.',
-    image_url: '/demo-assets/celebration.jpg',
+    image_url: demoAsset('celebration.jpg'),
     category: 'Celebrations',
     rotation: -1.2,
     tape_style: 'cream',
