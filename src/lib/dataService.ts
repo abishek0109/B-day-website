@@ -109,6 +109,9 @@ export async function getPhotos(publishedOnly = true): Promise<PhotoMemory[]> {
       if (error) {
         console.warn('Error fetching photos from Supabase, falling back to local:', error.message);
       } else if (data) {
+        if (publishedOnly && data.length === 0) {
+          return initialPhotos.filter(photo => photo.is_published);
+        }
         return data as PhotoMemory[];
       }
     } catch (err) {
