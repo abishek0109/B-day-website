@@ -1,5 +1,7 @@
 # A Little Book of You
 
+Source repository: https://github.com/abishek0109/B-day-website
+
 A scrapbook-inspired digital birthday memory book. The existing React/Vite interface keeps its warm paper textures, serif typography, Polaroid framing, washi tape, and pressed-flower decorations. Personal memories and media are intentionally left empty until the owner adds real content.
 
 ## Run locally
