@@ -84,3 +84,28 @@ export interface PersonalLetter {
   letter_date: string;
   updated_at?: string;
 }
+
+export interface BirthdayPage {
+  id: string;
+  slug: string;
+  recipient_name: string;
+  sender_name?: string;
+  title: string;
+  subtitle: string;
+  hero_tagline: string;
+  hero_note: string;
+  hero_intro: string;
+  hero_button_caption: string;
+  hero_photo_url: string;
+  hero_photo_caption: string;
+  hero_photo_date?: string;
+  intro_dedication: string;
+  intro_message: string;
+  intro_photo_url: string;
+  intro_note: string;
+  closing_message: string;
+  background_audio_url: string;
+  is_published: boolean;
+  created_at?: string;
+  updated_at?: string;
+}

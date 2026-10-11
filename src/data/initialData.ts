@@ -1,4 +1,4 @@
-import { SiteSettings, PhotoMemory, TimelineMemory, VideoMemory, BirthdayWish, PersonalLetter } from '../types/scrapbook';
+import { SiteSettings, PhotoMemory, TimelineMemory, VideoMemory, BirthdayWish, PersonalLetter, BirthdayPage } from '../types/scrapbook';
 
 const demoAsset = (filename: string) => `${import.meta.env.BASE_URL}demo-assets/${filename}`;
 
@@ -71,3 +71,30 @@ export const initialPersonalLetter: PersonalLetter = {
   sender_signature: '',
   letter_date: '',
 };
+
+export const initialBirthdayPages: BirthdayPage[] = [
+  {
+    id: 'birthday-ananya',
+    slug: 'ananya',
+    recipient_name: 'Ananya',
+    sender_name: 'Your people',
+    title: 'A Little Book of You',
+    subtitle: 'For all the little moments that became our big memories.',
+    hero_tagline: 'A BIRTHDAY MEMORY BOOK',
+    hero_note: 'a little birthday something, just for you',
+    hero_intro: 'A little corner of the internet for photographs, stories, and birthday wishes. This page is ready for a personal birthday story, memories, and messages from the people who love you.',
+    hero_button_caption: 'Turn the page when you are ready.',
+    hero_photo_url: demoAsset('hero-friends.jpg'),
+    hero_photo_caption: 'Sample birthday page — replace with a real photo.',
+    hero_photo_date: '',
+    intro_dedication: 'For Ananya',
+    intro_message: 'You make ordinary days feel extra special, and every memory with you feels brighter and warmer.',
+    intro_photo_url: '',
+    intro_note: 'A few pages, a thousand reasons we are so glad it is you.',
+    closing_message: 'Here’s to more laughter, more memories, and more reasons to celebrate you.',
+    background_audio_url: '',
+    is_published: true,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  },
+];
