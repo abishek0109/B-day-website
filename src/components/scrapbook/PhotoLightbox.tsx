@@ -106,18 +106,19 @@ export const PhotoLightbox: React.FC<PhotoLightboxProps> = ({
         </div>
 
         {/* Captions & Annotations */}
-        <div className="w-full text-center mt-4 px-2">
-          {currentPhoto.title && (
-            <h3 className="font-serif text-2xl md:text-3xl font-semibold text-[#3D3028]">
-              {currentPhoto.title}
-            </h3>
-          )}
+        {(currentPhoto.title || currentPhoto.caption || currentPhoto.category || currentPhoto.date || currentPhoto.location) && (
+          <div className="w-full text-center mt-4 px-2">
+            {currentPhoto.title && (
+              <h3 className="font-serif text-2xl md:text-3xl font-semibold text-[#3D3028]">
+                {currentPhoto.title}
+              </h3>
+            )}
 
-          {currentPhoto.caption && (
-            <p className="font-hand text-2xl md:text-3xl text-[#514137] mt-1.5 leading-snug">
-              {currentPhoto.caption}
-            </p>
-          )}
+            {currentPhoto.caption && currentPhoto.caption !== currentPhoto.title && (
+              <p className="font-hand text-2xl md:text-3xl text-[#514137] mt-1.5 leading-snug">
+                {currentPhoto.caption}
+              </p>
+            )}
 
           {/* Metadata badges */}
           <div className="flex flex-wrap items-center justify-center gap-4 mt-3 text-sm text-[#7E6C5F] font-serif italic">
@@ -148,6 +149,7 @@ export const PhotoLightbox: React.FC<PhotoLightboxProps> = ({
             <span>Use ← → keys to browse</span>
           </div>
         </div>
+      )}
       </div>
     </div>
   );

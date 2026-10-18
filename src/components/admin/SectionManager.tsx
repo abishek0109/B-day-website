@@ -211,8 +211,8 @@ export const SectionManager: React.FC<SectionManagerProps> = ({
             await savePhoto({
               id: p.id || crypto.randomUUID(),
               birthday_page_id: birthdayPage.id,
-              title: p.title || p.caption || '',
-              caption: p.caption || p.title || '',
+              title: p.title ? p.title.trim() : '',
+              caption: p.caption ? p.caption.trim() : '',
               image_url: p.image_url,
               category: p.category || 'Little Moments',
               date: p.date,
@@ -239,8 +239,8 @@ export const SectionManager: React.FC<SectionManagerProps> = ({
             await saveVideo({
               id: v.id || crypto.randomUUID(),
               birthday_page_id: birthdayPage.id,
-              title: v.title || '',
-              description: v.description || '',
+              title: v.title ? v.title.trim() : '',
+              description: v.description ? v.description.trim() : '',
               video_url: v.video_url,
               thumbnail_url: v.thumbnail_url,
               duration: v.duration,
@@ -359,6 +359,90 @@ export const SectionManager: React.FC<SectionManagerProps> = ({
     } else {
       notify('error', res.error || 'Upload failed.');
     }
+  };
+
+  const handleMultiplePhotosUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0 || !editingSection) return;
+
+    setUploading(true);
+    const existing = editingSection.content?.photos || [];
+    const newItems: any[] = [];
+
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      const res = await uploadMediaFile(file, 'photos', birthdayPage.id);
+      if (res.success && res.url) {
+        newItems.push({
+          id: crypto.randomUUID(),
+          title: '',
+          caption: '',
+          image_url: res.url,
+          category: 'Little Moments' as MemoryCategory,
+          rotation: (Math.random() * 4 - 2).toFixed(1),
+          tape_style: 'rose' as const,
+          sort_order: existing.length + newItems.length + 1,
+          is_published: true,
+        });
+      }
+    }
+
+    setUploading(false);
+    if (newItems.length > 0) {
+      setEditingSection({
+        ...editingSection,
+        content: {
+          ...editingSection.content,
+          photos: [...existing, ...newItems],
+        },
+      });
+      notify('success', `Uploaded ${newItems.length} photo${newItems.length > 1 ? 's' : ''} successfully.`);
+    } else {
+      notify('error', 'Failed to upload photos.');
+    }
+    e.target.value = '';
+  };
+
+  const handleMultipleVideosUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0 || !editingSection) return;
+
+    setUploading(true);
+    const existing = editingSection.content?.videos || [];
+    const newItems: any[] = [];
+
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      const res = await uploadMediaFile(file, 'videos', birthdayPage.id);
+      if (res.success && res.url) {
+        newItems.push({
+          id: crypto.randomUUID(),
+          title: '',
+          description: '',
+          video_url: res.url,
+          thumbnail_url: '',
+          duration: '',
+          date: '',
+          sort_order: existing.length + newItems.length + 1,
+          is_published: true,
+        });
+      }
+    }
+
+    setUploading(false);
+    if (newItems.length > 0) {
+      setEditingSection({
+        ...editingSection,
+        content: {
+          ...editingSection.content,
+          videos: [...existing, ...newItems],
+        },
+      });
+      notify('success', `Uploaded ${newItems.length} video${newItems.length > 1 ? 's' : ''} successfully.`);
+    } else {
+      notify('error', 'Failed to upload videos.');
+    }
+    e.target.value = '';
   };
 
   return (
@@ -964,36 +1048,48 @@ export const SectionManager: React.FC<SectionManagerProps> = ({
 
                     return (
                       <div className="space-y-4">
-                        <div className="flex items-center justify-between">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
                           <h4 className="font-serif font-bold text-base text-[#382C24]">
                             Gallery Photos ({galleryPhotos.length})
                           </h4>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const newPhoto = {
-                                id: crypto.randomUUID(),
-                                title: '',
-                                caption: '',
-                                image_url: '',
-                                category: 'Little Moments' as MemoryCategory,
-                                rotation: (Math.random() * 4 - 2).toFixed(1),
-                                tape_style: 'rose' as const,
-                                sort_order: galleryPhotos.length + 1,
-                                is_published: true,
-                              };
-                              setEditingSection({
-                                ...editingSection,
-                                content: {
-                                  ...editingSection.content,
-                                  photos: [...galleryPhotos, newPhoto],
-                                },
-                              });
-                            }}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#B77D7D] text-[#FAF6EC] text-xs font-serif rounded-xs"
-                          >
-                            <Plus className="w-3.5 h-3.5" /> Add Photo
-                          </button>
+                          <div className="flex items-center gap-2">
+                            <label className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#FAF7F2] border border-[#DECFBD] text-[#382C24] text-xs font-serif rounded-xs cursor-pointer hover:bg-[#F3EAD8] transition-colors">
+                              <Upload className="w-3.5 h-3.5 text-[#B77D7D]" /> Upload Multiple Photos
+                              <input
+                                type="file"
+                                accept="image/*"
+                                multiple
+                                className="hidden"
+                                onChange={handleMultiplePhotosUpload}
+                              />
+                            </label>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const newPhoto = {
+                                  id: crypto.randomUUID(),
+                                  title: '',
+                                  caption: '',
+                                  image_url: '',
+                                  category: 'Little Moments' as MemoryCategory,
+                                  rotation: (Math.random() * 4 - 2).toFixed(1),
+                                  tape_style: 'rose' as const,
+                                  sort_order: galleryPhotos.length + 1,
+                                  is_published: true,
+                                };
+                                setEditingSection({
+                                  ...editingSection,
+                                  content: {
+                                    ...editingSection.content,
+                                    photos: [...galleryPhotos, newPhoto],
+                                  },
+                                });
+                              }}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#B77D7D] text-[#FAF6EC] text-xs font-serif rounded-xs"
+                            >
+                              <Plus className="w-3.5 h-3.5" /> Add Photo
+                            </button>
+                          </div>
                         </div>
 
                         {galleryPhotos.map((photo: any, idx: number) => (
@@ -1017,9 +1113,22 @@ export const SectionManager: React.FC<SectionManagerProps> = ({
                                 Remove
                               </button>
                             </div>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
                               <input
-                                placeholder="Caption / Title"
+                                placeholder="Title (optional)"
+                                value={photo.title || ''}
+                                onChange={(e) => {
+                                  const updated = [...galleryPhotos];
+                                  updated[idx] = { ...updated[idx], title: e.target.value };
+                                  setEditingSection({
+                                    ...editingSection,
+                                    content: { ...editingSection.content, photos: updated },
+                                  });
+                                }}
+                                className="px-3 py-1.5 bg-[#FAF7F2] border border-[#DECFBD] rounded-xs text-xs"
+                              />
+                              <input
+                                placeholder="Caption / Note (optional)"
                                 value={photo.caption || ''}
                                 onChange={(e) => {
                                   const updated = [...galleryPhotos];
@@ -1032,7 +1141,7 @@ export const SectionManager: React.FC<SectionManagerProps> = ({
                                 className="px-3 py-1.5 bg-[#FAF7F2] border border-[#DECFBD] rounded-xs text-xs"
                               />
                               <input
-                                placeholder="Image URL"
+                                placeholder="Image URL *"
                                 value={photo.image_url || ''}
                                 onChange={(e) => {
                                   const updated = [...galleryPhotos];
@@ -1252,34 +1361,46 @@ export const SectionManager: React.FC<SectionManagerProps> = ({
                     const videoList = editingSection.content?.videos || [];
                     return (
                       <div className="space-y-4">
-                        <div className="flex items-center justify-between">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
                           <h4 className="font-serif font-bold text-base text-[#382C24]">
                             Video Reels ({videoList.length})
                           </h4>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const newVid = {
-                                id: crypto.randomUUID(),
-                                title: '',
-                                description: '',
-                                video_url: '',
-                                thumbnail_url: '',
-                                duration: '',
-                                date: '',
-                              };
-                              setEditingSection({
-                                ...editingSection,
-                                content: {
-                                  ...editingSection.content,
-                                  videos: [...videoList, newVid],
-                                },
-                              });
-                            }}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#B77D7D] text-[#FAF6EC] text-xs font-serif rounded-xs"
-                          >
-                            <Plus className="w-3.5 h-3.5" /> Add Video
-                          </button>
+                          <div className="flex items-center gap-2">
+                            <label className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#FAF7F2] border border-[#DECFBD] text-[#382C24] text-xs font-serif rounded-xs cursor-pointer hover:bg-[#F3EAD8] transition-colors">
+                              <Upload className="w-3.5 h-3.5 text-[#B77D7D]" /> Upload Multiple Videos
+                              <input
+                                type="file"
+                                accept="video/*"
+                                multiple
+                                className="hidden"
+                                onChange={handleMultipleVideosUpload}
+                              />
+                            </label>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const newVid = {
+                                  id: crypto.randomUUID(),
+                                  title: '',
+                                  description: '',
+                                  video_url: '',
+                                  thumbnail_url: '',
+                                  duration: '',
+                                  date: '',
+                                };
+                                setEditingSection({
+                                  ...editingSection,
+                                  content: {
+                                    ...editingSection.content,
+                                    videos: [...videoList, newVid],
+                                  },
+                                });
+                              }}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#B77D7D] text-[#FAF6EC] text-xs font-serif rounded-xs"
+                            >
+                              <Plus className="w-3.5 h-3.5" /> Add Video
+                            </button>
+                          </div>
                         </div>
 
                         {videoList.map((vid: any, idx: number) => (
@@ -1305,7 +1426,7 @@ export const SectionManager: React.FC<SectionManagerProps> = ({
                             </div>
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                               <input
-                                placeholder="Video Title *"
+                                placeholder="Video Title (optional)"
                                 value={vid.title || ''}
                                 onChange={(e) => {
                                   const updated = [...videoList];
@@ -1374,7 +1495,7 @@ export const SectionManager: React.FC<SectionManagerProps> = ({
                             </div>
                             <textarea
                               rows={2}
-                              placeholder="Description / caption..."
+                              placeholder="Description / caption (optional)..."
                               value={vid.description || ''}
                               onChange={(e) => {
                                 const updated = [...videoList];

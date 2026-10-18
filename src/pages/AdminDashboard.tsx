@@ -300,6 +300,75 @@ export const AdminDashboard: React.FC = () => {
     }
   };
 
+  const handleMultiplePhotosUpload = async (files: FileList) => {
+    if (!selectedPageId || !files.length) return;
+    setUploading(true);
+    notify('success', `Uploading ${files.length} photo${files.length > 1 ? 's' : ''}...`);
+
+    let uploadedCount = 0;
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      const res = await uploadMediaFile(file, 'photos', selectedPageId);
+      if (res.success && res.url) {
+        const newPhoto: PhotoMemory = {
+          id: newId('photo'),
+          birthday_page_id: selectedPageId,
+          title: '',
+          caption: '',
+          image_url: res.url,
+          category: 'Little Moments',
+          sort_order: photos.length + uploadedCount + 1,
+          is_published: true,
+        };
+        await savePhoto(newPhoto, selectedPageId);
+        uploadedCount++;
+      }
+    }
+
+    setUploading(false);
+
+    if (uploadedCount > 0) {
+      await loadSelectedPageData(selectedPageId);
+      notify('success', `Successfully uploaded ${uploadedCount} photo${uploadedCount > 1 ? 's' : ''}! Add titles or captions as desired.`);
+    } else {
+      notify('error', 'Failed to upload photos.');
+    }
+  };
+
+  const handleMultipleVideosUpload = async (files: FileList) => {
+    if (!selectedPageId || !files.length) return;
+    setUploading(true);
+    notify('success', `Uploading ${files.length} video${files.length > 1 ? 's' : ''}...`);
+
+    let uploadedCount = 0;
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      const res = await uploadMediaFile(file, 'videos', selectedPageId);
+      if (res.success && res.url) {
+        const newVideo: VideoMemory = {
+          id: newId('video'),
+          birthday_page_id: selectedPageId,
+          title: '',
+          description: '',
+          video_url: res.url,
+          sort_order: videos.length + uploadedCount + 1,
+          is_published: true,
+        };
+        await saveVideo(newVideo, selectedPageId);
+        uploadedCount++;
+      }
+    }
+
+    setUploading(false);
+
+    if (uploadedCount > 0) {
+      await loadSelectedPageData(selectedPageId);
+      notify('success', `Successfully uploaded ${uploadedCount} video${uploadedCount > 1 ? 's' : ''}! Add titles or descriptions as desired.`);
+    } else {
+      notify('error', 'Failed to upload videos.');
+    }
+  };
+
   if (!authState.isAuthenticated) {
     return (
       <div className="min-h-screen flex items-center justify-center py-12 px-4 bg-[#F8F4EC]">
@@ -538,7 +607,14 @@ export const AdminDashboard: React.FC = () => {
               )}
 
               {currentTab === 'photos' && (
-                <CollectionEditor title="Photos" items={photos} onAdd={() => setPhotos((items) => [...items, { id: newId('photo'), birthday_page_id: selectedPageId, title: '', caption: '', image_url: '', category: 'Little Moments', sort_order: items.length + 1, is_published: true }])} render={(photo) => (
+                <CollectionEditor
+                  title="Photos"
+                  items={photos}
+                  onAdd={() => setPhotos((items) => [...items, { id: newId('photo'), birthday_page_id: selectedPageId, title: '', caption: '', image_url: '', category: 'Little Moments', sort_order: items.length + 1, is_published: true }])}
+                  onUploadMultiple={handleMultiplePhotosUpload}
+                  uploadAccept="image/*"
+                  uploadLabel="Upload Multiple Photos"
+                  render={(photo) => (
                   <PhotoEditor photo={photo} onChange={(updated) => setPhotos((items) => items.map((item) => item.id === updated.id ? updated : item))} onSave={() => runSelectedMutation(() => savePhoto(photo, selectedPageId), 'Photo saved.')} onDelete={() => runSelectedMutation(async () => {
                     const delRes = await deletePhoto(photo.id, selectedPageId);
                     try {
@@ -582,7 +658,14 @@ export const AdminDashboard: React.FC = () => {
               )}
 
               {currentTab === 'videos' && (
-                <CollectionEditor title="Videos" items={videos} onAdd={() => setVideos((items) => [...items, { id: newId('video'), birthday_page_id: selectedPageId, title: '', description: '', video_url: '', sort_order: items.length + 1, is_published: true }])} render={(video) => (
+                <CollectionEditor
+                  title="Videos"
+                  items={videos}
+                  onAdd={() => setVideos((items) => [...items, { id: newId('video'), birthday_page_id: selectedPageId, title: '', description: '', video_url: '', sort_order: items.length + 1, is_published: true }])}
+                  onUploadMultiple={handleMultipleVideosUpload}
+                  uploadAccept="video/mp4,video/webm,video/ogg,video/*"
+                  uploadLabel="Upload Multiple Videos"
+                  render={(video) => (
                   <VideoEditor video={video} onChange={(updated) => setVideos((items) => items.map((item) => item.id === updated.id ? updated : item))} onSave={() => runSelectedMutation(() => saveVideo(video, selectedPageId), 'Video saved.')} onDelete={() => runSelectedMutation(async () => {
                     const delRes = await deleteVideo(video.id, selectedPageId);
                     try {
@@ -649,14 +732,50 @@ function TextArea({ label, value, onChange }: { label: string; value: string; on
   );
 }
 
-function CollectionEditor<T extends { id: string }>({ title, items, onAdd, render }: { title: string; items: T[]; onAdd: () => void; render: (item: T) => React.ReactNode }) {
+function CollectionEditor<T extends { id: string }>({
+  title,
+  items,
+  onAdd,
+  onUploadMultiple,
+  uploadAccept,
+  uploadLabel,
+  render,
+}: {
+  title: string;
+  items: T[];
+  onAdd: () => void;
+  onUploadMultiple?: (files: FileList) => void;
+  uploadAccept?: string;
+  uploadLabel?: string;
+  render: (item: T) => React.ReactNode;
+}) {
   return (
     <div className="bg-[#FAF7F2] border border-[#E8DEC8] p-5 rounded-xs shadow-scrapbook space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <h3 className="font-serif text-2xl font-bold text-[#382C24]">{title}</h3>
-        <button onClick={onAdd} className="inline-flex items-center gap-1.5 px-3 py-2 bg-[#B77D7D] text-[#FAF6EC] text-xs font-serif rounded-xs">
-          <Plus className="w-3.5 h-3.5" /> Add
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          {onUploadMultiple && (
+            <label className="inline-flex items-center gap-1.5 px-3 py-2 bg-[#FAF6EC] border border-[#DECFBD] text-[#7E6C5F] hover:text-[#382C24] hover:bg-[#F1E8DA] text-xs font-serif rounded-xs cursor-pointer shadow-xs transition-colors">
+              <Upload className="w-3.5 h-3.5 text-[#B77D7D]" />
+              {uploadLabel || 'Upload Multiple'}
+              <input
+                type="file"
+                multiple
+                accept={uploadAccept || 'image/*'}
+                className="hidden"
+                onChange={(e) => {
+                  if (e.target.files && e.target.files.length > 0) {
+                    onUploadMultiple(e.target.files);
+                    e.target.value = '';
+                  }
+                }}
+              />
+            </label>
+          )}
+          <button onClick={onAdd} className="inline-flex items-center gap-1.5 px-3 py-2 bg-[#B77D7D] hover:bg-[#A36B6B] text-[#FAF6EC] text-xs font-serif rounded-xs shadow-xs cursor-pointer transition-colors">
+            <Plus className="w-3.5 h-3.5" /> Add
+          </button>
+        </div>
       </div>
       <div className="space-y-4">
         {items.length ? items.map((item) => <div key={item.id}>{render(item)}</div>) : <p className="rounded-xs border border-dashed border-[#DECFBD] p-8 text-center font-hand text-xl text-[#7E6C5F]">Nothing here yet.</p>}
@@ -678,12 +797,12 @@ function PhotoEditor({ photo, onChange, onSave, onDelete, onUpload }: { photo: P
   return (
     <div className="p-4 bg-[#FAF6EC] border border-[#DECFBD] rounded-xs space-y-3">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-        <TextField label="Title" value={photo.title} onChange={(value) => onChange({ ...photo, title: value })} />
-        <TextField label="Caption" value={photo.caption} onChange={(value) => onChange({ ...photo, caption: value })} />
+        <TextField label="Title (optional)" value={photo.title || ''} onChange={(value) => onChange({ ...photo, title: value })} />
+        <TextField label="Caption / Note (optional)" value={photo.caption || ''} onChange={(value) => onChange({ ...photo, caption: value })} />
         <TextField label="Image URL" value={photo.image_url} onChange={(value) => onChange({ ...photo, image_url: value })} />
         <label className="block">
           <span className="block text-xs font-serif uppercase tracking-wider text-[#7E6C5F] mb-1">Category</span>
-          <select value={photo.category} onChange={(event) => onChange({ ...photo, category: event.target.value as MemoryCategory })} className="w-full px-3 py-2 bg-[#FAF6EC] border border-[#DECFBD] rounded-xs text-sm">
+          <select value={photo.category || 'Little Moments'} onChange={(event) => onChange({ ...photo, category: event.target.value as MemoryCategory })} className="w-full px-3 py-2 bg-[#FAF6EC] border border-[#DECFBD] rounded-xs text-sm">
             {categories.map((category) => <option key={category}>{category}</option>)}
           </select>
         </label>
@@ -717,15 +836,15 @@ function VideoEditor({ video, onChange, onSave, onDelete, onUpload }: { video: V
   return (
     <div className="p-4 bg-[#FAF6EC] border border-[#DECFBD] rounded-xs space-y-3">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-        <TextField label="Title" value={video.title} onChange={(value) => onChange({ ...video, title: value })} />
+        <TextField label="Title (optional)" value={video.title || ''} onChange={(value) => onChange({ ...video, title: value })} />
         <TextField label="Video URL" value={video.video_url} onChange={(value) => onChange({ ...video, video_url: value })} />
-        <TextField label="Thumbnail URL" value={video.thumbnail_url || ''} onChange={(value) => onChange({ ...video, thumbnail_url: value })} />
-        <TextField label="Duration" value={video.duration || ''} onChange={(value) => onChange({ ...video, duration: value })} />
+        <TextField label="Thumbnail URL (optional)" value={video.thumbnail_url || ''} onChange={(value) => onChange({ ...video, thumbnail_url: value })} />
+        <TextField label="Duration (optional)" value={video.duration || ''} onChange={(value) => onChange({ ...video, duration: value })} />
       </div>
-      <TextArea label="Description" value={video.description} onChange={(value) => onChange({ ...video, description: value })} />
+      <TextArea label="Description / Caption (optional)" value={video.description || ''} onChange={(value) => onChange({ ...video, description: value })} />
       <label className="inline-flex items-center gap-2 text-xs font-serif"><input type="checkbox" checked={video.is_published} onChange={(event) => onChange({ ...video, is_published: event.target.checked })} className="accent-[#B77D7D]" />Published</label>
       <div className="flex flex-wrap gap-2 items-center justify-between">
-        <label className="inline-flex items-center gap-1.5 px-3 py-2 bg-[#FAF7F2] border border-[#DECFBD] rounded-xs text-xs font-serif cursor-pointer"><Upload className="w-3.5 h-3.5" />Upload<input type="file" accept="video/mp4,video/webm,video/ogg" className="hidden" onChange={onUpload} /></label>
+        <label className="inline-flex items-center gap-1.5 px-3 py-2 bg-[#FAF7F2] border border-[#DECFBD] rounded-xs text-xs font-serif cursor-pointer"><Upload className="w-3.5 h-3.5" />Upload<input type="file" accept="video/mp4,video/webm,video/ogg,video/*" className="hidden" onChange={onUpload} /></label>
         <RowActions onSave={onSave} onDelete={onDelete} />
       </div>
     </div>

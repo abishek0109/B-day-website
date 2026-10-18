@@ -86,37 +86,39 @@ export const PolaroidPhoto: React.FC<PolaroidPhotoProps> = ({
       </div>
 
       {/* Handwritten caption space */}
-      <div className="pt-3.5 px-1 text-center flex flex-col items-center">
-        {title && (
-          <h4 className="font-serif text-lg md:text-xl font-semibold text-[#3D3028] leading-snug">
-            {title}
-          </h4>
-        )}
-        
-        {caption && (
-          <p className="font-hand text-xl md:text-2xl text-[#514137] leading-tight mt-1">
-            {caption}
-          </p>
-        )}
+      {(title || caption || date || location) ? (
+        <div className="pt-3.5 px-1 text-center flex flex-col items-center">
+          {title && (
+            <h4 className="font-serif text-lg md:text-xl font-semibold text-[#3D3028] leading-snug">
+              {title}
+            </h4>
+          )}
+          
+          {caption && caption !== title && (
+            <p className="font-hand text-xl md:text-2xl text-[#514137] leading-tight mt-1">
+              {caption}
+            </p>
+          )}
 
-        {/* Date and Location annotations */}
-        {(date || location) && (
-          <div className="flex flex-wrap items-center justify-center gap-3 mt-2 text-[12px] text-[#7E6C5F] font-serif italic">
-            {date && (
-              <span className="inline-flex items-center gap-1">
-                <Calendar className="w-3 h-3 opacity-60" />
-                {date}
-              </span>
-            )}
-            {location && (
-              <span className="inline-flex items-center gap-1">
-                <MapPin className="w-3 h-3 opacity-60" />
-                {location}
-              </span>
-            )}
-          </div>
-        )}
-      </div>
+          {/* Date and Location annotations */}
+          {(date || location) && (
+            <div className="flex flex-wrap items-center justify-center gap-3 mt-2 text-[12px] text-[#7E6C5F] font-serif italic">
+              {date && (
+                <span className="inline-flex items-center gap-1">
+                  <Calendar className="w-3 h-3 opacity-60" />
+                  {date}
+                </span>
+              )}
+              {location && (
+                <span className="inline-flex items-center gap-1">
+                  <MapPin className="w-3 h-3 opacity-60" />
+                  {location}
+                </span>
+              )}
+            </div>
+          )}
+        </div>
+      ) : null}
 
       {/* Light corner crease effect */}
       <div className="absolute bottom-0 right-0 w-4 h-4 bg-gradient-to-tl from-black/5 to-transparent pointer-events-none" />

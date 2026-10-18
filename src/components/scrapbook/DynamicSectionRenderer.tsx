@@ -442,26 +442,34 @@ export const DynamicSectionRenderer: React.FC<DynamicSectionRendererProps> = ({
                             </span>
                           )}
                         </div>
-                        <div className="mt-4">
-                          <h3 className="font-serif text-xl font-bold text-[#FAF6EC] group-hover:text-[#EAD6D2] transition-colors">
-                            {video.title}
-                          </h3>
-                          <div className="flex items-center gap-3 text-xs font-mono text-[#A7AD96] mt-1 mb-2">
-                            {video.date && (
-                              <span className="flex items-center gap-1">
-                                <Calendar className="w-3 h-3" /> {video.date}
-                              </span>
+                        {(video.title || video.description || video.date || video.duration) && (
+                          <div className="mt-4">
+                            {video.title && (
+                              <h3 className="font-serif text-xl font-bold text-[#FAF6EC] group-hover:text-[#EAD6D2] transition-colors">
+                                {video.title}
+                              </h3>
                             )}
-                            {video.duration && (
-                              <span className="flex items-center gap-1">
-                                <Clock className="w-3 h-3" /> {video.duration}
-                              </span>
+                            {(video.date || video.duration) && (
+                              <div className="flex items-center gap-3 text-xs font-mono text-[#A7AD96] mt-1 mb-2">
+                                {video.date && (
+                                  <span className="flex items-center gap-1">
+                                    <Calendar className="w-3 h-3" /> {video.date}
+                                  </span>
+                                )}
+                                {video.duration && (
+                                  <span className="flex items-center gap-1">
+                                    <Clock className="w-3 h-3" /> {video.duration}
+                                  </span>
+                                )}
+                              </div>
+                            )}
+                            {video.description && (
+                              <p className="font-body text-sm text-[#DECFBD] line-clamp-2">
+                                {video.description}
+                              </p>
                             )}
                           </div>
-                          <p className="font-body text-sm text-[#DECFBD] line-clamp-2">
-                            {video.description}
-                          </p>
-                        </div>
+                        )}
                       </div>
                     );
                   })}

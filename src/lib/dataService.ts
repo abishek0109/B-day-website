@@ -704,11 +704,11 @@ export function mergePhotoMemories(
       const prev = map.get(existingKey)!;
       map.set(existingKey, {
         ...prev,
-        title: item.title || prev.title || '',
-        caption: item.caption || prev.caption || '',
+        title: item.title !== undefined ? item.title : (prev.title || ''),
+        caption: item.caption !== undefined ? item.caption : (prev.caption || ''),
         category: item.category || prev.category || 'Little Moments',
-        date: item.date || prev.date,
-        location: item.location || prev.location,
+        date: item.date !== undefined ? item.date : prev.date,
+        location: item.location !== undefined ? item.location : prev.location,
         rotation: item.rotation !== undefined ? Number(item.rotation) : prev.rotation,
         tape_style: item.tape_style || prev.tape_style,
         sort_order: item.sort_order ?? prev.sort_order ?? 0,
@@ -773,11 +773,11 @@ export function mergeVideoMemories(
       const prev = map.get(existingKey)!;
       map.set(existingKey, {
         ...prev,
-        title: item.title || prev.title || '',
-        description: item.description || prev.description || '',
-        thumbnail_url: item.thumbnail_url || prev.thumbnail_url,
-        duration: item.duration || prev.duration,
-        date: item.date || prev.date,
+        title: item.title !== undefined ? item.title : (prev.title || ''),
+        description: item.description !== undefined ? item.description : (prev.description || ''),
+        thumbnail_url: item.thumbnail_url !== undefined ? item.thumbnail_url : prev.thumbnail_url,
+        duration: item.duration !== undefined ? item.duration : prev.duration,
+        date: item.date !== undefined ? item.date : prev.date,
         sort_order: item.sort_order ?? prev.sort_order ?? 0,
       });
     } else {
