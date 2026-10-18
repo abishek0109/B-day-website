@@ -34,7 +34,13 @@ import { WashiTape } from './WashiTape';
 import { StampBadge } from './StampBadge';
 import { VideoModal } from './VideoModal';
 import { ScrapbookImage } from './ScrapbookImage';
-import { submitPublicWish } from '../../lib/dataService';
+import {
+  mergeBirthdayWishes,
+  mergePhotoMemories,
+  mergeTimelineMemories,
+  mergeVideoMemories,
+  submitPublicWish,
+} from '../../lib/dataService';
 import { isSupabaseConfigured } from '../../lib/supabase';
 import confetti from 'canvas-confetti';
 
@@ -224,9 +230,7 @@ export const DynamicSectionRenderer: React.FC<DynamicSectionRendererProps> = ({
             SECTION TYPE: PHOTO GALLERY
            ========================================================================= */}
         {section.section_type === 'photos' && (() => {
-          const galleryPhotos: PhotoMemory[] = (content.photos && content.photos.length > 0)
-            ? content.photos
-            : siteData.photos;
+          const galleryPhotos: PhotoMemory[] = mergePhotoMemories(content.photos, siteData.photos);
           const filtered = selectedPhotoCategory === 'All'
             ? galleryPhotos
             : galleryPhotos.filter((p) => p.category === selectedPhotoCategory);
@@ -306,7 +310,7 @@ export const DynamicSectionRenderer: React.FC<DynamicSectionRendererProps> = ({
             SECTION TYPE: TIMELINE
            ========================================================================= */}
         {section.section_type === 'timeline' && (() => {
-          const events = (content.events && content.events.length > 0) ? content.events : siteData.timeline;
+          const events = mergeTimelineMemories(content.events, siteData.timeline);
           return (
             <div className="relative">
               <div className="absolute left-4 sm:left-1/2 top-4 bottom-4 -translate-x-1/2 w-0.5 border-l-2 border-dashed border-[#8C7765]/30 z-0" />
@@ -386,7 +390,7 @@ export const DynamicSectionRenderer: React.FC<DynamicSectionRendererProps> = ({
             SECTION TYPE: VIDEO MEMORIES
            ========================================================================= */}
         {section.section_type === 'videos' && (() => {
-          const videos = (content.videos && content.videos.length > 0) ? content.videos : siteData.videos;
+          const videos = mergeVideoMemories(content.videos, siteData.videos);
           return (
             <div>
               {videos.length > 0 ? (
@@ -480,7 +484,7 @@ export const DynamicSectionRenderer: React.FC<DynamicSectionRendererProps> = ({
             SECTION TYPE: BIRTHDAY WISHES
            ========================================================================= */}
         {section.section_type === 'wishes' && (() => {
-          const wishes = (content.wishes && content.wishes.length > 0) ? content.wishes : siteData.wishes;
+          const wishes = mergeBirthdayWishes(content.wishes, siteData.wishes);
           return (
             <div className="space-y-12">
               {/* Wishes Bulletin Board */}

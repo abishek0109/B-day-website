@@ -664,3 +664,244 @@ export async function uploadMediaFile(file: File, folder = 'photos', birthdayPag
     reader.readAsDataURL(file);
   });
 }
+
+/**
+ * Merges photos from section JSON content and relational photo memories table.
+ * Guarantees that photos added in either the PHOTOS tab or Manage Sections appear on the website without duplicates.
+ */
+export function mergePhotoMemories(
+  contentPhotos: PhotoMemory[] | any[] = [],
+  sitePhotos: PhotoMemory[] = []
+): PhotoMemory[] {
+  const map = new Map<string, PhotoMemory>();
+
+  // 1. Relational table items (PHOTOS tab)
+  for (const photo of sitePhotos || []) {
+    if (!photo || !photo.image_url) continue;
+    if (photo.is_published === false) continue;
+    const key = (photo.id && String(photo.id).trim()) || photo.image_url.trim();
+    map.set(key, { ...photo });
+  }
+
+  // 2. Section content items (Manage Sections)
+  for (const item of contentPhotos || []) {
+    if (!item || !item.image_url) continue;
+    if (item.is_published === false) continue;
+
+    let existingKey: string | null = null;
+    if (item.id && map.has(item.id)) {
+      existingKey = item.id;
+    } else {
+      for (const [k, v] of map.entries()) {
+        if (v.image_url.trim() === item.image_url.trim()) {
+          existingKey = k;
+          break;
+        }
+      }
+    }
+
+    if (existingKey) {
+      const prev = map.get(existingKey)!;
+      map.set(existingKey, {
+        ...prev,
+        title: item.title || prev.title || '',
+        caption: item.caption || prev.caption || '',
+        category: item.category || prev.category || 'Little Moments',
+        date: item.date || prev.date,
+        location: item.location || prev.location,
+        rotation: item.rotation !== undefined ? Number(item.rotation) : prev.rotation,
+        tape_style: item.tape_style || prev.tape_style,
+        sort_order: item.sort_order ?? prev.sort_order ?? 0,
+      });
+    } else {
+      const newKey = (item.id && String(item.id).trim()) || item.image_url.trim();
+      map.set(newKey, {
+        id: item.id || crypto.randomUUID(),
+        birthday_page_id: item.birthday_page_id || '',
+        title: item.title || '',
+        caption: item.caption || '',
+        image_url: item.image_url.trim(),
+        category: item.category || 'Little Moments',
+        date: item.date,
+        location: item.location,
+        rotation: item.rotation !== undefined ? Number(item.rotation) : 0,
+        tape_style: item.tape_style || 'rose',
+        sort_order: item.sort_order ?? (map.size + 1),
+        is_published: true,
+      });
+    }
+  }
+
+  const list = Array.from(map.values());
+  list.sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+  return list;
+}
+
+/**
+ * Merges videos from section JSON content and relational video memories table without duplicates.
+ */
+export function mergeVideoMemories(
+  contentVideos: VideoMemory[] | any[] = [],
+  siteVideos: VideoMemory[] = []
+): VideoMemory[] {
+  const map = new Map<string, VideoMemory>();
+
+  for (const vid of siteVideos || []) {
+    if (!vid || !vid.video_url) continue;
+    if (vid.is_published === false) continue;
+    const key = (vid.id && String(vid.id).trim()) || vid.video_url.trim();
+    map.set(key, { ...vid });
+  }
+
+  for (const item of contentVideos || []) {
+    if (!item || !item.video_url) continue;
+    if (item.is_published === false) continue;
+
+    let existingKey: string | null = null;
+    if (item.id && map.has(item.id)) {
+      existingKey = item.id;
+    } else {
+      for (const [k, v] of map.entries()) {
+        if (v.video_url.trim() === item.video_url.trim()) {
+          existingKey = k;
+          break;
+        }
+      }
+    }
+
+    if (existingKey) {
+      const prev = map.get(existingKey)!;
+      map.set(existingKey, {
+        ...prev,
+        title: item.title || prev.title || '',
+        description: item.description || prev.description || '',
+        thumbnail_url: item.thumbnail_url || prev.thumbnail_url,
+        duration: item.duration || prev.duration,
+        date: item.date || prev.date,
+        sort_order: item.sort_order ?? prev.sort_order ?? 0,
+      });
+    } else {
+      const newKey = (item.id && String(item.id).trim()) || item.video_url.trim();
+      map.set(newKey, {
+        id: item.id || crypto.randomUUID(),
+        birthday_page_id: item.birthday_page_id || '',
+        title: item.title || '',
+        description: item.description || '',
+        video_url: item.video_url.trim(),
+        thumbnail_url: item.thumbnail_url,
+        duration: item.duration,
+        date: item.date,
+        sort_order: item.sort_order ?? (map.size + 1),
+        is_published: true,
+      });
+    }
+  }
+
+  const list = Array.from(map.values());
+  list.sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+  return list;
+}
+
+/**
+ * Merges timeline stories from section JSON content and relational memories table without duplicates.
+ */
+export function mergeTimelineMemories(
+  contentEvents: TimelineMemory[] | any[] = [],
+  siteTimeline: TimelineMemory[] = []
+): TimelineMemory[] {
+  const map = new Map<string, TimelineMemory>();
+
+  for (const ev of siteTimeline || []) {
+    if (!ev || !ev.title) continue;
+    if (ev.is_published === false) continue;
+    const key = (ev.id && String(ev.id).trim()) || `${ev.title.trim()}_${ev.date?.trim()}`;
+    map.set(key, { ...ev });
+  }
+
+  for (const item of contentEvents || []) {
+    if (!item || !item.title) continue;
+    if (item.is_published === false) continue;
+
+    let existingKey: string | null = null;
+    if (item.id && map.has(item.id)) {
+      existingKey = item.id;
+    } else {
+      for (const [k, v] of map.entries()) {
+        if (v.title.trim() === item.title.trim() && (v.date || '') === (item.date || '')) {
+          existingKey = k;
+          break;
+        }
+      }
+    }
+
+    if (existingKey) {
+      const prev = map.get(existingKey)!;
+      map.set(existingKey, {
+        ...prev,
+        title: item.title || prev.title,
+        date: item.date || prev.date,
+        story: item.story || prev.story || '',
+        tag: item.tag || prev.tag,
+        image_url: item.image_url || prev.image_url,
+        location: item.location || prev.location,
+        sort_order: item.sort_order ?? prev.sort_order ?? 0,
+      });
+    } else {
+      const newKey = (item.id && String(item.id).trim()) || `${item.title.trim()}_${item.date?.trim()}`;
+      map.set(newKey, {
+        id: item.id || crypto.randomUUID(),
+        birthday_page_id: item.birthday_page_id || '',
+        title: item.title.trim(),
+        date: item.date || '',
+        story: item.story || '',
+        tag: item.tag,
+        image_url: item.image_url,
+        location: item.location,
+        sort_order: item.sort_order ?? (map.size + 1),
+        is_published: true,
+      });
+    }
+  }
+
+  const list = Array.from(map.values());
+  list.sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+  return list;
+}
+
+/**
+ * Merges wishes from section JSON content and relational birthday_wishes table without duplicates.
+ */
+export function mergeBirthdayWishes(
+  contentWishes: BirthdayWish[] | any[] = [],
+  siteWishes: BirthdayWish[] = []
+): BirthdayWish[] {
+  const map = new Map<string, BirthdayWish>();
+
+  for (const wish of siteWishes || []) {
+    if (!wish || !wish.message) continue;
+    if (wish.status === 'rejected') continue;
+    const key = (wish.id && String(wish.id).trim()) || `${wish.sender_name}_${wish.message.slice(0, 20)}`;
+    map.set(key, { ...wish });
+  }
+
+  for (const item of contentWishes || []) {
+    if (!item || !item.message) continue;
+    const key = (item.id && String(item.id).trim()) || `${item.sender_name}_${item.message.slice(0, 20)}`;
+    if (!map.has(key)) {
+      map.set(key, {
+        id: item.id || crypto.randomUUID(),
+        birthday_page_id: item.birthday_page_id || '',
+        sender_name: item.sender_name || 'Friend',
+        relationship: item.relationship,
+        message: item.message,
+        photo_url: item.photo_url,
+        paper_color: item.paper_color || 'cream',
+        rotation: item.rotation !== undefined ? Number(item.rotation) : 0,
+        status: item.status || 'approved',
+        created_at: item.created_at || new Date().toISOString(),
+      });
+    }
+  }
+
+  return Array.from(map.values());
+}

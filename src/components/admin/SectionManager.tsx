@@ -25,10 +25,20 @@ import {
   SectionType,
 } from '../../types/scrapbook';
 import {
+  deletePhoto,
   deleteSection,
+  deleteTimelineMemory,
+  deleteVideo,
   getSections,
+  mergeBirthdayWishes,
+  mergePhotoMemories,
+  mergeTimelineMemories,
+  mergeVideoMemories,
+  savePhoto,
   saveSection,
   saveSectionsOrder,
+  saveTimelineMemory,
+  saveVideo,
   slugify,
   toggleSectionVisibility,
   uploadMediaFile,
@@ -161,15 +171,116 @@ export const SectionManager: React.FC<SectionManagerProps> = ({
       await loadSectionsData();
       if (onSectionsChanged) onSectionsChanged();
       // Immediately open editor for the new section
-      setEditingSection(res.data);
+      openEditSection(res.data);
     } else {
       notify('error', res.error || 'Failed to create section.');
     }
   };
 
+  const openEditSection = (section: BirthdaySection) => {
+    const cloned = JSON.parse(JSON.stringify(section)) as BirthdaySection;
+    cloned.content = cloned.content || {};
+    if (cloned.section_type === 'photos') {
+      cloned.content.photos = mergePhotoMemories(cloned.content.photos || [], siteData.photos);
+    } else if (cloned.section_type === 'videos') {
+      cloned.content.videos = mergeVideoMemories(cloned.content.videos || [], siteData.videos);
+    } else if (cloned.section_type === 'timeline') {
+      cloned.content.events = mergeTimelineMemories(cloned.content.events || [], siteData.timeline);
+    } else if (cloned.section_type === 'wishes') {
+      cloned.content.wishes = mergeBirthdayWishes(cloned.content.wishes || [], siteData.wishes);
+    }
+    setEditingSection(cloned);
+    setEditActiveTab('content');
+  };
+
   const handleSaveEditedSection = async () => {
     if (!editingSection) return;
     setIsSaving(true);
+
+    try {
+      // Sync photos to relational photo memories table
+      if (editingSection.section_type === 'photos' && Array.isArray(editingSection.content?.photos)) {
+        const currentPhotoIds = new Set(editingSection.content.photos.map((p: any) => p.id).filter(Boolean));
+        for (const sp of siteData.photos) {
+          if (sp.id && !currentPhotoIds.has(sp.id)) {
+            await deletePhoto(sp.id, birthdayPage.id);
+          }
+        }
+        for (const p of editingSection.content.photos) {
+          if (p && p.image_url) {
+            await savePhoto({
+              id: p.id || crypto.randomUUID(),
+              birthday_page_id: birthdayPage.id,
+              title: p.title || p.caption || '',
+              caption: p.caption || p.title || '',
+              image_url: p.image_url,
+              category: p.category || 'Little Moments',
+              date: p.date,
+              location: p.location,
+              rotation: p.rotation !== undefined ? Number(p.rotation) : 0,
+              tape_style: p.tape_style || 'rose',
+              sort_order: p.sort_order ?? 0,
+              is_published: p.is_published !== false,
+            }, birthdayPage.id);
+          }
+        }
+      }
+
+      // Sync videos to relational video memories table
+      if (editingSection.section_type === 'videos' && Array.isArray(editingSection.content?.videos)) {
+        const currentVideoIds = new Set(editingSection.content.videos.map((v: any) => v.id).filter(Boolean));
+        for (const sv of siteData.videos) {
+          if (sv.id && !currentVideoIds.has(sv.id)) {
+            await deleteVideo(sv.id, birthdayPage.id);
+          }
+        }
+        for (const v of editingSection.content.videos) {
+          if (v && v.video_url) {
+            await saveVideo({
+              id: v.id || crypto.randomUUID(),
+              birthday_page_id: birthdayPage.id,
+              title: v.title || '',
+              description: v.description || '',
+              video_url: v.video_url,
+              thumbnail_url: v.thumbnail_url,
+              duration: v.duration,
+              date: v.date,
+              sort_order: v.sort_order ?? 0,
+              is_published: v.is_published !== false,
+            }, birthdayPage.id);
+          }
+        }
+      }
+
+      // Sync timeline stories to relational memories table
+      if (editingSection.section_type === 'timeline' && Array.isArray(editingSection.content?.events)) {
+        const currentEventIds = new Set(editingSection.content.events.map((e: any) => e.id).filter(Boolean));
+        for (const st of siteData.timeline) {
+          if (st.id && !currentEventIds.has(st.id)) {
+            await deleteTimelineMemory(st.id, birthdayPage.id);
+          }
+        }
+        for (const ev of editingSection.content.events) {
+          if (ev && ev.title) {
+            await saveTimelineMemory({
+              id: ev.id || crypto.randomUUID(),
+              birthday_page_id: birthdayPage.id,
+              title: ev.title,
+              date: ev.date || '',
+              story: ev.story || '',
+              tag: ev.tag,
+              image_url: ev.image_url,
+              location: ev.location,
+              sort_order: ev.sort_order ?? 0,
+              is_published: ev.is_published !== false,
+            }, birthdayPage.id);
+          }
+        }
+      }
+    } catch (syncErr) {
+      console.warn('Syncing items to database tables had notice:', syncErr);
+    }
+
     const res = await saveSection(editingSection, birthdayPage.id);
     setIsSaving(false);
 
@@ -403,10 +514,7 @@ export const SectionManager: React.FC<SectionManagerProps> = ({
 
                   {/* Edit Button */}
                   <button
-                    onClick={() => {
-                      setEditingSection(JSON.parse(JSON.stringify(section)));
-                      setEditActiveTab('content');
-                    }}
+                    onClick={() => openEditSection(section)}
                     title="Edit section content and settings"
                     className="inline-flex items-center gap-1 px-3 py-1.5 bg-[#B77D7D] hover:bg-[#A36B6B] text-[#FAF6EC] text-xs font-serif rounded-xs shadow-xs cursor-pointer"
                   >

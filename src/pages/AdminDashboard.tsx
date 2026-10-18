@@ -40,12 +40,14 @@ import {
   getBirthdayPages,
   getPersonalLetter,
   getPhotos,
+  getSections,
   getSiteSettings,
   getTimelineMemories,
   getVideos,
   getWishes,
   saveBirthdayPage,
   savePhoto,
+  saveSection,
   saveTimelineMemory,
   saveVideo,
   saveWish,
@@ -536,20 +538,68 @@ export const AdminDashboard: React.FC = () => {
               )}
 
               {currentTab === 'photos' && (
-                <CollectionEditor title="Photos" items={photos} onAdd={() => setPhotos((items) => [...items, { id: newId('photo'), birthday_page_id: selectedPageId, title: '', caption: '', image_url: '', category: 'Little Moments', sort_order: items.length + 1, is_published: false }])} render={(photo) => (
-                  <PhotoEditor photo={photo} onChange={(updated) => setPhotos((items) => items.map((item) => item.id === updated.id ? updated : item))} onSave={() => runSelectedMutation(() => savePhoto(photo, selectedPageId), 'Photo saved.')} onDelete={() => runSelectedMutation(() => deletePhoto(photo.id, selectedPageId), 'Photo deleted.')} onUpload={(event) => handleFileUpload(event, (url) => setPhotos((items) => items.map((item) => item.id === photo.id ? { ...item, image_url: url } : item)), 'photos')} />
+                <CollectionEditor title="Photos" items={photos} onAdd={() => setPhotos((items) => [...items, { id: newId('photo'), birthday_page_id: selectedPageId, title: '', caption: '', image_url: '', category: 'Little Moments', sort_order: items.length + 1, is_published: true }])} render={(photo) => (
+                  <PhotoEditor photo={photo} onChange={(updated) => setPhotos((items) => items.map((item) => item.id === updated.id ? updated : item))} onSave={() => runSelectedMutation(() => savePhoto(photo, selectedPageId), 'Photo saved.')} onDelete={() => runSelectedMutation(async () => {
+                    const delRes = await deletePhoto(photo.id, selectedPageId);
+                    try {
+                      const currentSections = await getSections(selectedPageId, false);
+                      for (const sec of currentSections) {
+                        if (sec.section_type === 'photos' && Array.isArray(sec.content?.photos)) {
+                          const remaining = sec.content.photos.filter((p: any) => p.id !== photo.id && p.image_url !== photo.image_url);
+                          if (remaining.length !== sec.content.photos.length) {
+                            await saveSection({ ...sec, content: { ...sec.content, photos: remaining } }, selectedPageId);
+                          }
+                        }
+                      }
+                    } catch (e) {
+                      console.warn('Notice cleaning section photo:', e);
+                    }
+                    return delRes;
+                  }, 'Photo deleted.')} onUpload={(event) => handleFileUpload(event, (url) => setPhotos((items) => items.map((item) => item.id === photo.id ? { ...item, image_url: url } : item)), 'photos')} />
                 )} />
               )}
 
               {currentTab === 'timeline' && (
-                <CollectionEditor title="Timeline Stories" items={timeline} onAdd={() => setTimeline((items) => [...items, { id: newId('timeline'), birthday_page_id: selectedPageId, title: '', date: '', story: '', sort_order: items.length + 1, is_published: false }])} render={(entry) => (
-                  <TimelineEditor entry={entry} onChange={(updated) => setTimeline((items) => items.map((item) => item.id === updated.id ? updated : item))} onSave={() => runSelectedMutation(() => saveTimelineMemory(entry, selectedPageId), 'Timeline story saved.')} onDelete={() => runSelectedMutation(() => deleteTimelineMemory(entry.id, selectedPageId), 'Timeline story deleted.')} />
+                <CollectionEditor title="Timeline Stories" items={timeline} onAdd={() => setTimeline((items) => [...items, { id: newId('timeline'), birthday_page_id: selectedPageId, title: '', date: '', story: '', sort_order: items.length + 1, is_published: true }])} render={(entry) => (
+                  <TimelineEditor entry={entry} onChange={(updated) => setTimeline((items) => items.map((item) => item.id === updated.id ? updated : item))} onSave={() => runSelectedMutation(() => saveTimelineMemory(entry, selectedPageId), 'Timeline story saved.')} onDelete={() => runSelectedMutation(async () => {
+                    const delRes = await deleteTimelineMemory(entry.id, selectedPageId);
+                    try {
+                      const currentSections = await getSections(selectedPageId, false);
+                      for (const sec of currentSections) {
+                        if (sec.section_type === 'timeline' && Array.isArray(sec.content?.events)) {
+                          const remaining = sec.content.events.filter((ev: any) => ev.id !== entry.id && ev.title !== entry.title);
+                          if (remaining.length !== sec.content.events.length) {
+                            await saveSection({ ...sec, content: { ...sec.content, events: remaining } }, selectedPageId);
+                          }
+                        }
+                      }
+                    } catch (e) {
+                      console.warn('Notice cleaning section timeline event:', e);
+                    }
+                    return delRes;
+                  }, 'Timeline story deleted.')} />
                 )} />
               )}
 
               {currentTab === 'videos' && (
-                <CollectionEditor title="Videos" items={videos} onAdd={() => setVideos((items) => [...items, { id: newId('video'), birthday_page_id: selectedPageId, title: '', description: '', video_url: '', sort_order: items.length + 1, is_published: false }])} render={(video) => (
-                  <VideoEditor video={video} onChange={(updated) => setVideos((items) => items.map((item) => item.id === updated.id ? updated : item))} onSave={() => runSelectedMutation(() => saveVideo(video, selectedPageId), 'Video saved.')} onDelete={() => runSelectedMutation(() => deleteVideo(video.id, selectedPageId), 'Video deleted.')} onUpload={(event) => handleFileUpload(event, (url) => setVideos((items) => items.map((item) => item.id === video.id ? { ...item, video_url: url } : item)), 'videos')} />
+                <CollectionEditor title="Videos" items={videos} onAdd={() => setVideos((items) => [...items, { id: newId('video'), birthday_page_id: selectedPageId, title: '', description: '', video_url: '', sort_order: items.length + 1, is_published: true }])} render={(video) => (
+                  <VideoEditor video={video} onChange={(updated) => setVideos((items) => items.map((item) => item.id === updated.id ? updated : item))} onSave={() => runSelectedMutation(() => saveVideo(video, selectedPageId), 'Video saved.')} onDelete={() => runSelectedMutation(async () => {
+                    const delRes = await deleteVideo(video.id, selectedPageId);
+                    try {
+                      const currentSections = await getSections(selectedPageId, false);
+                      for (const sec of currentSections) {
+                        if (sec.section_type === 'videos' && Array.isArray(sec.content?.videos)) {
+                          const remaining = sec.content.videos.filter((v: any) => v.id !== video.id && v.video_url !== video.video_url);
+                          if (remaining.length !== sec.content.videos.length) {
+                            await saveSection({ ...sec, content: { ...sec.content, videos: remaining } }, selectedPageId);
+                          }
+                        }
+                      }
+                    } catch (e) {
+                      console.warn('Notice cleaning section video:', e);
+                    }
+                    return delRes;
+                  }, 'Video deleted.')} onUpload={(event) => handleFileUpload(event, (url) => setVideos((items) => items.map((item) => item.id === video.id ? { ...item, video_url: url } : item)), 'videos')} />
                 )} />
               )}
 
