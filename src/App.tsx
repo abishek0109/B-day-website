@@ -1,20 +1,15 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { BrowserRouter, Navigate, Route, Routes, useLocation, useParams } from 'react-router-dom';
 import { BirthdaySiteData } from './types/scrapbook';
 import { getDefaultPublishedBirthdayPage, getPublicBirthdaySite } from './lib/dataService';
-import { BirthdayRouteProvider } from './lib/routeContext';
+import { BirthdayRouteProvider, useBookRoute } from './lib/routeContext';
 import { Navbar } from './components/layout/Navbar';
 import { Footer } from './components/layout/Footer';
 import { LandingPage } from './pages/LandingPage';
-import { IntroductionPage } from './pages/IntroductionPage';
-import { PhotoGalleryPage } from './pages/PhotoGalleryPage';
-import { TimelinePage } from './pages/TimelinePage';
-import { VideoMemoriesPage } from './pages/VideoMemoriesPage';
-import { BirthdayWishesPage } from './pages/BirthdayWishesPage';
-import { LetterPage } from './pages/LetterPage';
 import { ClosingPage } from './pages/ClosingPage';
 import { AdminDashboard } from './pages/AdminDashboard';
 import { NotFound } from './pages/NotFound';
+import { DynamicSectionRenderer } from './components/scrapbook/DynamicSectionRenderer';
 import { BookOpen } from 'lucide-react';
 
 function ScrollToTop() {
@@ -50,15 +45,47 @@ function SiteUnavailable() {
 }
 
 function BirthdayBookRoutes({ site, onReload }: { site: BirthdaySiteData; onReload: () => void }) {
+  const { toBookPath } = useBookRoute();
+  const visibleSections = useMemo(
+    () => (site.sections || []).filter((s) => s.is_visible !== false),
+    [site.sections]
+  );
+  const firstSectionPath = visibleSections[0] ? toBookPath(`/${visibleSections[0].slug}`) : undefined;
+
   return (
     <Routes>
-      <Route index element={<LandingPage settings={site.settings} />} />
-      <Route path="intro" element={<IntroductionPage settings={site.settings} />} />
-      <Route path="photos" element={<PhotoGalleryPage photos={site.photos} />} />
-      <Route path="timeline" element={<TimelinePage timeline={site.timeline} />} />
-      <Route path="videos" element={<VideoMemoriesPage videos={site.videos} />} />
-      <Route path="wishes" element={<BirthdayWishesPage wishes={site.wishes} birthdayPageId={site.page.id} onWishSubmitted={onReload} />} />
-      <Route path="letter" element={<LetterPage letter={site.letter} />} />
+      <Route index element={<LandingPage settings={site.settings} firstSectionPath={firstSectionPath} />} />
+      {visibleSections.map((section, index) => {
+        const chapterNumber = index + 1;
+        const totalChapters = visibleSections.length;
+        const prevSection = index > 0 ? visibleSections[index - 1] : null;
+        const nextSection = index < visibleSections.length - 1 ? visibleSections[index + 1] : null;
+
+        const prevPath = prevSection ? toBookPath(`/${prevSection.slug}`) : toBookPath('/');
+        const prevLabel = prevSection ? `Chapter ${index}: ${prevSection.title}` : 'Back to Cover';
+        const nextPath = nextSection ? toBookPath(`/${nextSection.slug}`) : toBookPath('/closing');
+        const nextLabel = nextSection ? `Chapter ${index + 2}: ${nextSection.title}` : 'The Closing Page';
+
+        return (
+          <Route
+            key={section.id}
+            path={section.slug}
+            element={
+              <DynamicSectionRenderer
+                section={section}
+                chapterNumber={chapterNumber}
+                totalChapters={totalChapters}
+                previousPath={prevPath}
+                previousLabel={prevLabel}
+                nextPath={nextPath}
+                nextLabel={nextLabel}
+                siteData={site}
+                onReload={onReload}
+              />
+            }
+          />
+        );
+      })}
       <Route path="closing" element={<ClosingPage settings={site.settings} />} />
       <Route path="*" element={<NotFound />} />
     </Routes>
@@ -98,7 +125,7 @@ function BirthdaySite() {
     <BirthdayRouteProvider basePath={basePath}>
       <div className="min-h-screen flex flex-col bg-[#F8F4EC] text-[#514137]">
         <ScrollToTop />
-        <Navbar audioUrl={site.settings.background_audio_url} />
+        <Navbar audioUrl={site.settings.background_audio_url} sections={site.sections} />
         <main className="flex-1">
           <BirthdayBookRoutes site={site} onReload={loadSite} />
         </main>

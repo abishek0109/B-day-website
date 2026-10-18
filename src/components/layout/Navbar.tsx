@@ -4,12 +4,15 @@ import { BookOpen, Volume2, VolumeX, Lock, Sparkles, Menu, X } from 'lucide-reac
 import confetti from 'canvas-confetti';
 import { useBookRoute } from '../../lib/routeContext';
 
+import { BirthdaySection } from '../../types/scrapbook';
+
 interface NavbarProps {
   audioUrl?: string;
   onTriggerConfetti?: () => void;
+  sections?: BirthdaySection[];
 }
 
-export const Navbar: React.FC<NavbarProps> = ({ audioUrl, onTriggerConfetti }) => {
+export const Navbar: React.FC<NavbarProps> = ({ audioUrl, onTriggerConfetti, sections }) => {
   const location = useLocation();
   const { toBookPath } = useBookRoute();
   const [isPlayingMusic, setIsPlayingMusic] = useState(false);
@@ -71,16 +74,29 @@ export const Navbar: React.FC<NavbarProps> = ({ audioUrl, onTriggerConfetti }) =
     if (onTriggerConfetti) onTriggerConfetti();
   };
 
-  const navLinks = [
-    { name: 'Cover', path: '/' },
-    { name: 'Dedication', path: '/intro' },
-    { name: 'Photo Scrapbook', path: '/photos' },
-    { name: 'Timeline', path: '/timeline' },
-    { name: 'Cinema', path: '/videos' },
-    { name: 'Wishes', path: '/wishes' },
-    { name: 'Personal Letter', path: '/letter' },
-    { name: 'Closing', path: '/closing' },
-  ];
+  const navLinks = React.useMemo(() => {
+    if (sections && sections.length > 0) {
+      const visible = sections.filter((s) => s.is_visible !== false);
+      return [
+        { name: 'Cover', path: '/' },
+        ...visible.map((s) => ({
+          name: s.title || (s.section_type === 'photos' ? 'Photos' : s.section_type === 'videos' ? 'Videos' : s.section_type),
+          path: `/${s.slug}`,
+        })),
+        { name: 'Closing', path: '/closing' },
+      ];
+    }
+    return [
+      { name: 'Cover', path: '/' },
+      { name: 'Dedication', path: '/intro' },
+      { name: 'Photo Scrapbook', path: '/photos' },
+      { name: 'Timeline', path: '/timeline' },
+      { name: 'Cinema', path: '/videos' },
+      { name: 'Wishes', path: '/wishes' },
+      { name: 'Personal Letter', path: '/letter' },
+      { name: 'Closing', path: '/closing' },
+    ];
+  }, [sections]);
 
   const isAdminPage = location.pathname.startsWith('/admin');
 

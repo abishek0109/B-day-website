@@ -11,9 +11,10 @@ import { useBookRoute } from '../lib/routeContext';
 
 interface LandingPageProps {
   settings: SiteSettings;
+  firstSectionPath?: string;
 }
 
-export const LandingPage: React.FC<LandingPageProps> = ({ settings }) => {
+export const LandingPage: React.FC<LandingPageProps> = ({ settings, firstSectionPath }) => {
   const navigate = useNavigate();
   const { toBookPath } = useBookRoute();
 
@@ -83,7 +84,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ settings }) => {
             {/* CTA Button & Handwritten Caption */}
             <div className="flex flex-col items-start gap-3">
               <button
-                onClick={() => navigate(toBookPath('/intro'))}
+                onClick={() => navigate(firstSectionPath || toBookPath('/intro'))}
                 className="group relative inline-flex items-center gap-3 px-8 py-4 bg-[#B77D7D] hover:bg-[#A36B6B] text-[#FAF6EC] font-serif text-lg tracking-wide rounded-sm shadow-scrapbook hover:shadow-scrapbook-lift transition-all duration-300 hover:scale-[1.02] cursor-pointer"
               >
                 <span>Open Your Memory Book</span>

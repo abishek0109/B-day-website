@@ -116,6 +116,88 @@ export interface BirthdayPage {
   updated_at?: string;
 }
 
+export type SectionType =
+  | 'dedication'
+  | 'photos'
+  | 'timeline'
+  | 'videos'
+  | 'wishes'
+  | 'letter'
+  | 'custom';
+
+export interface DedicationSectionContent {
+  recipient_name?: string;
+  dedication_title?: string;
+  message: string;
+  note?: string;
+  photo_url?: string;
+  photo_caption?: string;
+}
+
+export interface PhotosSectionContent {
+  description?: string;
+  photos?: PhotoMemory[];
+}
+
+export interface TimelineSectionContent {
+  description?: string;
+  events?: TimelineMemory[];
+}
+
+export interface VideosSectionContent {
+  description?: string;
+  videos?: VideoMemory[];
+}
+
+export interface WishesSectionContent {
+  subtitle?: string;
+  description?: string;
+  allow_submissions?: boolean;
+  wishes?: BirthdayWish[];
+}
+
+export interface LetterSectionContent {
+  greeting: string;
+  letter_date: string;
+  paragraphs: string[];
+  sign_off: string;
+  sender_signature: string;
+  postmark?: string;
+}
+
+export interface CustomSectionItem {
+  id: string;
+  title?: string;
+  text?: string;
+  image_url?: string;
+  caption?: string;
+  tag?: string;
+}
+
+export interface CustomSectionContent {
+  subtitle?: string;
+  description?: string;
+  body_paragraphs?: string[];
+  quote?: string;
+  quote_author?: string;
+  items?: CustomSectionItem[];
+  accent_style?: 'scrapbook' | 'polaroid' | 'journal' | 'minimal';
+}
+
+export interface BirthdaySection {
+  id: string;
+  birthday_page_id: string;
+  section_type: SectionType;
+  title: string;
+  subtitle?: string;
+  slug: string;
+  display_order: number;
+  is_visible: boolean;
+  content: Record<string, any>;
+  created_at?: string;
+  updated_at?: string;
+}
+
 export interface BirthdaySiteData {
   page: BirthdayPage;
   settings: SiteSettings;
@@ -124,4 +206,5 @@ export interface BirthdaySiteData {
   videos: VideoMemory[];
   wishes: BirthdayWish[];
   letter: PersonalLetter;
+  sections: BirthdaySection[];
 }

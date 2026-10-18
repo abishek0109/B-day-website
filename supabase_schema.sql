@@ -111,6 +111,26 @@ ALTER TABLE public.personal_letter
     ALTER COLUMN sender_signature SET DEFAULT '',
     ALTER COLUMN letter_date SET DEFAULT '';
 
+-- G. Dynamic Birthday Sections (Section Builder)
+CREATE TABLE IF NOT EXISTS public.birthday_sections (
+    id TEXT PRIMARY KEY DEFAULT uuid_generate_v4()::text,
+    birthday_page_id TEXT NOT NULL REFERENCES public.birthday_pages(id) ON DELETE CASCADE,
+    section_type TEXT NOT NULL,
+    title TEXT NOT NULL DEFAULT '',
+    subtitle TEXT DEFAULT '',
+    slug TEXT NOT NULL,
+    display_order INTEGER NOT NULL DEFAULT 0,
+    is_visible BOOLEAN NOT NULL DEFAULT true,
+    content JSONB NOT NULL DEFAULT '{}'::jsonb,
+    created_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now()) NOT NULL,
+    updated_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now()) NOT NULL,
+    CONSTRAINT birthday_sections_slug_format CHECK (slug ~ '^[a-z0-9]+(?:-[a-z0-9]+)*$')
+);
+
+CREATE INDEX IF NOT EXISTS birthday_sections_page_order_idx ON public.birthday_sections (birthday_page_id, display_order);
+CREATE INDEX IF NOT EXISTS birthday_sections_visible_idx ON public.birthday_sections (birthday_page_id, is_visible);
+CREATE INDEX IF NOT EXISTS birthday_sections_page_slug_idx ON public.birthday_sections (birthday_page_id, slug);
+
 -- -------------------------------------------------------------------------
 -- 3. ROW LEVEL SECURITY (RLS) POLICIES
 -- -------------------------------------------------------------------------
@@ -126,6 +146,21 @@ ALTER TABLE public.memories ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.videos ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.birthday_wishes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.personal_letter ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.birthday_sections ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Public can view visible sections" ON public.birthday_sections;
+DROP POLICY IF EXISTS "Authenticated owner can manage all sections" ON public.birthday_sections;
+
+CREATE POLICY "Public can view visible sections" ON public.birthday_sections FOR SELECT USING (
+  is_visible = true AND EXISTS (
+    SELECT 1 FROM public.birthday_pages page 
+    WHERE page.id = birthday_sections.birthday_page_id AND page.is_published = true
+  )
+);
+
+CREATE POLICY "Authenticated owner can manage all sections" ON public.birthday_sections FOR ALL TO authenticated 
+USING (public.is_birthday_owner()) 
+WITH CHECK (public.is_birthday_owner());
 
 -- Site Settings Policies
 DROP POLICY IF EXISTS "Public can view site settings" ON public.site_settings;

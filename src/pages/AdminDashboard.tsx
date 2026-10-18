@@ -9,6 +9,7 @@ import {
   Eye,
   Film,
   Image as ImageIcon,
+  Layers,
   Lock,
   LogOut,
   MessageSquare,
@@ -17,6 +18,7 @@ import {
   Trash2,
   Upload,
 } from 'lucide-react';
+import { SectionManager } from '../components/admin/SectionManager';
 import {
   BirthdayPage,
   BirthdayWish,
@@ -56,7 +58,7 @@ import {
 import { AuthState, checkAuthState, loginOwner, logoutOwner } from '../lib/authService';
 import { getSupabaseConfigStatus } from '../lib/supabase';
 
-type AdminTab = 'content' | 'photos' | 'timeline' | 'videos' | 'wishes' | 'letter';
+type AdminTab = 'sections' | 'content' | 'photos' | 'timeline' | 'videos' | 'wishes' | 'letter';
 
 const categories: MemoryCategory[] = ['Little Moments', 'Adventures', 'Celebrations', 'Everyday Chaos'];
 const emptyAuth: AuthState = { isAuthenticated: false, isOwner: false, userEmail: null, isDemoMode: true };
@@ -91,7 +93,7 @@ export const AdminDashboard: React.FC = () => {
   const [selectedPageId, setSelectedPageId] = useState('');
   const [query, setQuery] = useState('');
   const [newFriendName, setNewFriendName] = useState('');
-  const [currentTab, setCurrentTab] = useState<AdminTab>('content');
+  const [currentTab, setCurrentTab] = useState<AdminTab>('sections');
 
   const [settings, setSettings] = useState<SiteSettings | null>(null);
   const [photos, setPhotos] = useState<PhotoMemory[]>([]);
@@ -329,8 +331,24 @@ export const AdminDashboard: React.FC = () => {
               </button>
             </form>
           ) : (
-            <div className="rounded-xs border border-[#DECFBD] bg-[#FAF3DE] p-4 font-body text-xs leading-relaxed text-[#7E6C5F]">
-              Configure Supabase first, then sign in with the owner account listed in the README.
+            <div className="space-y-4">
+              <div className="rounded-xs border border-[#DECFBD] bg-[#FAF3DE] p-4 font-body text-xs leading-relaxed text-[#7E6C5F]">
+                Supabase is not connected. Configure your credentials in <code className="bg-[#EFE8DD] px-1 py-0.5 rounded-xs font-mono text-[11px]">.env</code> to connect PostgreSQL & Supabase Auth.
+              </div>
+              {import.meta.env.DEV && (
+                <button
+                  type="button"
+                  onClick={async () => {
+                    setIsLoggingIn(true);
+                    const res = await loginOwner('dev-owner@bday.test', 'dev');
+                    if (res.success) await refreshAuth();
+                    setIsLoggingIn(false);
+                  }}
+                  className="w-full py-3 bg-[#B77D7D] hover:bg-[#A36B6B] text-[#FAF6EC] font-serif text-sm rounded-sm shadow-scrapbook cursor-pointer"
+                >
+                  Enter Local Dev Dashboard (Offline Test Mode)
+                </button>
+              )}
             </div>
           )}
         </div>
@@ -459,7 +477,8 @@ export const AdminDashboard: React.FC = () => {
 
               <div className="flex gap-2 overflow-x-auto pb-1">
                 {([
-                  ['content', Edit2, 'Content'],
+                  ['sections', Layers, 'Manage Sections'],
+                  ['content', Edit2, 'Basic Content'],
                   ['photos', ImageIcon, `Photos (${photos.length})`],
                   ['timeline', BookOpen, `Timeline (${timeline.length})`],
                   ['videos', Film, `Videos (${videos.length})`],
@@ -471,6 +490,24 @@ export const AdminDashboard: React.FC = () => {
                   </button>
                 ))}
               </div>
+
+              {currentTab === 'sections' && (
+                <SectionManager
+                  birthdayPage={selectedPage}
+                  siteData={{
+                    page: selectedPage,
+                    settings,
+                    photos,
+                    timeline,
+                    videos,
+                    wishes,
+                    letter,
+                    sections: [],
+                  }}
+                  onSectionsChanged={() => loadSelectedPageData(selectedPage.id)}
+                  notify={notify}
+                />
+              )}
 
               {currentTab === 'content' && (
                 <form onSubmit={handleSaveSettings} className="bg-[#FAF7F2] border border-[#E8DEC8] p-5 rounded-xs shadow-scrapbook space-y-4">

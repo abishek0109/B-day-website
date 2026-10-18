@@ -1,6 +1,7 @@
 import { supabase, isSupabaseConfigured } from './supabase';
 import {
   BirthdayPage,
+  BirthdaySection,
   BirthdaySiteData,
   BirthdayWish,
   PersonalLetter,
@@ -26,6 +27,7 @@ const LOCAL_STORAGE_KEYS = {
   VIDEOS: 'scrapbook_videos_by_page',
   WISHES: 'scrapbook_wishes_by_page',
   LETTERS: 'scrapbook_letters_by_page',
+  SECTIONS: 'scrapbook_sections_by_page',
 };
 
 const DEFAULT_PAGE_ID = initialBirthdayPages[0]?.id || 'birthday-default';
@@ -397,17 +399,241 @@ export async function updatePersonalLetter(letter: PersonalLetter, birthdayPageI
   return { success: true };
 }
 
+export function createDefaultSectionsForPage(page: BirthdayPage): BirthdaySection[] {
+  return [
+    {
+      id: `default-sec-dedication-${page.id}`,
+      birthday_page_id: page.id,
+      section_type: 'dedication',
+      title: 'The Dedication',
+      subtitle: 'A page dedicated to you',
+      slug: 'intro',
+      display_order: 0,
+      is_visible: true,
+      content: {
+        recipient_name: page.recipient_name,
+        dedication_title: page.intro_dedication || 'A page dedicated to you',
+        message: page.intro_message || '',
+        note: page.intro_note || '',
+        photo_url: page.intro_photo_url || '',
+      },
+    },
+    {
+      id: `default-sec-photos-${page.id}`,
+      birthday_page_id: page.id,
+      section_type: 'photos',
+      title: 'Photo Scrapbook',
+      subtitle: 'Our Favourite Memories',
+      slug: 'photos',
+      display_order: 1,
+      is_visible: true,
+      content: {
+        description: 'Click any photograph to step closer and relive the moment in full view.',
+      },
+    },
+    {
+      id: `default-sec-timeline-${page.id}`,
+      birthday_page_id: page.id,
+      section_type: 'timeline',
+      title: 'The Timeline',
+      subtitle: 'Little Moments, Big Memories',
+      slug: 'timeline',
+      display_order: 2,
+      is_visible: true,
+      content: {
+        description: 'From the very first hello to the adventures that defined us, here is how our story unfolded.',
+      },
+    },
+    {
+      id: `default-sec-videos-${page.id}`,
+      birthday_page_id: page.id,
+      section_type: 'videos',
+      title: 'Moments in Motion',
+      subtitle: 'Our little cinema reel',
+      slug: 'videos',
+      display_order: 3,
+      is_visible: true,
+      content: {
+        description: 'Short clips, spontaneous laughter, and genuine living. Click on any reel to watch the video.',
+      },
+    },
+    {
+      id: `default-sec-wishes-${page.id}`,
+      birthday_page_id: page.id,
+      section_type: 'wishes',
+      title: 'Words From Your People',
+      subtitle: 'Birthday notes and messages',
+      slug: 'wishes',
+      display_order: 4,
+      is_visible: true,
+      content: {
+        description: 'Warm notes, inside jokes, and heartfelt blessings from the people who love you most.',
+      },
+    },
+    {
+      id: `default-sec-letter-${page.id}`,
+      birthday_page_id: page.id,
+      section_type: 'letter',
+      title: 'Personal Letter',
+      subtitle: 'A letter just for you',
+      slug: 'letter',
+      display_order: 5,
+      is_visible: true,
+      content: {
+        description: 'From my heart to yours.',
+      },
+    },
+  ];
+}
+
+export async function getSections(birthdayPageId = DEFAULT_PAGE_ID, visibleOnly = false): Promise<BirthdaySection[]> {
+  const scopedPageId = scopedId(birthdayPageId);
+  if (isSupabaseConfigured && supabase) {
+    try {
+      let query = supabase.from('birthday_sections').select('*').eq('birthday_page_id', scopedPageId);
+      if (visibleOnly) query = query.eq('is_visible', true);
+      const { data, error } = await query.order('display_order', { ascending: true });
+      if (error) {
+        throw error;
+      }
+      if (data && data.length > 0) {
+        return data as BirthdaySection[];
+      }
+      // If no custom sections in DB, generate defaults based on the page
+      const page = (await getBirthdayPages()).find((p) => p.id === scopedPageId);
+      if (page) {
+        const defaults = createDefaultSectionsForPage(page);
+        return visibleOnly ? defaults.filter((s) => s.is_visible) : defaults;
+      }
+      return [];
+    } catch (e) {
+      console.warn('Error reading birthday_sections from Supabase, attempting fallback:', e);
+    }
+  }
+
+  // Local storage mode
+  const allSections = getLocalStorage<BirthdaySection[]>(LOCAL_STORAGE_KEYS.SECTIONS, []);
+  let pageSections = allSections.filter((item) => scopedId(item.birthday_page_id) === scopedPageId);
+  if (pageSections.length === 0) {
+    const page = (await getBirthdayPages()).find((p) => p.id === scopedPageId) || initialBirthdayPages[0];
+    if (page) {
+      pageSections = createDefaultSectionsForPage(page);
+      setLocalStorage(LOCAL_STORAGE_KEYS.SECTIONS, [...allSections, ...pageSections]);
+    }
+  }
+  pageSections.sort((a, b) => a.display_order - b.display_order);
+  return visibleOnly ? pageSections.filter((s) => s.is_visible) : pageSections;
+}
+
+export async function saveSection(section: BirthdaySection, birthdayPageId = DEFAULT_PAGE_ID): Promise<{ success: boolean; data?: BirthdaySection; error?: string }> {
+  const scopedPageId = scopedId(birthdayPageId);
+  const now = new Date().toISOString();
+  const normalized: BirthdaySection = {
+    ...section,
+    id: section.id || crypto.randomUUID(),
+    birthday_page_id: scopedPageId,
+    slug: slugify(section.slug || section.title),
+    content: section.content || {},
+    updated_at: now,
+    created_at: section.created_at || now,
+  };
+
+  if (isSupabaseConfigured && supabase) {
+    try {
+      const { data, error } = await supabase.from('birthday_sections').upsert(normalized).select().single();
+      if (error) throw error;
+      return { success: true, data: data as BirthdaySection };
+    } catch (err: unknown) {
+      return { success: false, error: err instanceof Error ? err.message : 'Failed to save section' };
+    }
+  }
+
+  const allSections = getLocalStorage<BirthdaySection[]>(LOCAL_STORAGE_KEYS.SECTIONS, []);
+  const isMatch = (item: BirthdaySection) => item.id === normalized.id && scopedId(item.birthday_page_id) === scopedPageId;
+  const updated = allSections.some(isMatch)
+    ? allSections.map((item) => (isMatch(item) ? normalized : item))
+    : [...allSections, normalized];
+  setLocalStorage(LOCAL_STORAGE_KEYS.SECTIONS, updated);
+  return { success: true, data: normalized };
+}
+
+export async function saveSectionsOrder(orderedIds: string[], birthdayPageId = DEFAULT_PAGE_ID): Promise<{ success: boolean; error?: string }> {
+  const scopedPageId = scopedId(birthdayPageId);
+  const currentSections = await getSections(scopedPageId, false);
+  const updatedSections = currentSections.map((sec) => {
+    const newIdx = orderedIds.indexOf(sec.id);
+    return newIdx !== -1 ? { ...sec, display_order: newIdx, updated_at: new Date().toISOString() } : sec;
+  });
+  updatedSections.sort((a, b) => a.display_order - b.display_order);
+
+  if (isSupabaseConfigured && supabase) {
+    try {
+      const { error } = await supabase.from('birthday_sections').upsert(updatedSections);
+      if (error) throw error;
+      return { success: true };
+    } catch (err: unknown) {
+      return { success: false, error: err instanceof Error ? err.message : 'Failed to update section ordering' };
+    }
+  }
+
+  const allSections = getLocalStorage<BirthdaySection[]>(LOCAL_STORAGE_KEYS.SECTIONS, []);
+  const otherPageSections = allSections.filter((item) => scopedId(item.birthday_page_id) !== scopedPageId);
+  setLocalStorage(LOCAL_STORAGE_KEYS.SECTIONS, [...otherPageSections, ...updatedSections]);
+  return { success: true };
+}
+
+export async function toggleSectionVisibility(id: string, is_visible: boolean, birthdayPageId = DEFAULT_PAGE_ID): Promise<{ success: boolean; error?: string }> {
+  const scopedPageId = scopedId(birthdayPageId);
+  if (isSupabaseConfigured && supabase) {
+    try {
+      const { error } = await supabase.from('birthday_sections').update({ is_visible, updated_at: new Date().toISOString() }).eq('id', id).eq('birthday_page_id', scopedPageId);
+      if (error) throw error;
+      return { success: true };
+    } catch (err: unknown) {
+      return { success: false, error: err instanceof Error ? err.message : 'Failed to update section visibility' };
+    }
+  }
+
+  const allSections = getLocalStorage<BirthdaySection[]>(LOCAL_STORAGE_KEYS.SECTIONS, []);
+  const updated = allSections.map((sec) => (
+    sec.id === id && scopedId(sec.birthday_page_id) === scopedPageId ? { ...sec, is_visible, updated_at: new Date().toISOString() } : sec
+  ));
+  setLocalStorage(LOCAL_STORAGE_KEYS.SECTIONS, updated);
+  return { success: true };
+}
+
+export async function deleteSection(id: string, birthdayPageId = DEFAULT_PAGE_ID): Promise<{ success: boolean; error?: string }> {
+  const scopedPageId = scopedId(birthdayPageId);
+  if (isSupabaseConfigured && supabase) {
+    try {
+      const { error } = await supabase.from('birthday_sections').delete().eq('id', id).eq('birthday_page_id', scopedPageId);
+      if (error) throw error;
+      return { success: true };
+    } catch (err: unknown) {
+      return { success: false, error: err instanceof Error ? err.message : 'Failed to delete section' };
+    }
+  }
+
+  const allSections = getLocalStorage<BirthdaySection[]>(LOCAL_STORAGE_KEYS.SECTIONS, []);
+  const filtered = allSections.filter((item) => (
+    item.id !== id || scopedId(item.birthday_page_id) !== scopedPageId
+  ));
+  setLocalStorage(LOCAL_STORAGE_KEYS.SECTIONS, filtered);
+  return { success: true };
+}
+
 export async function getPublicBirthdaySite(slug: string): Promise<BirthdaySiteData | null> {
   const page = await getBirthdayPageBySlug(slug, true);
   if (!page) return null;
-  const [photos, timeline, videos, wishes, letter] = await Promise.all([
+  const [photos, timeline, videos, wishes, letter, sections] = await Promise.all([
     getPhotos(true, page.id),
     getTimelineMemories(true, page.id),
     getVideos(true, page.id),
     getWishes(false, page.id),
     getPersonalLetter(page.id),
+    getSections(page.id, true),
   ]);
-  return { page, settings: settingsFromPage(page), photos, timeline, videos, wishes, letter };
+  return { page, settings: settingsFromPage(page), photos, timeline, videos, wishes, letter, sections };
 }
 
 export async function uploadMediaFile(file: File, folder = 'photos', birthdayPageId = DEFAULT_PAGE_ID): Promise<{ success: boolean; url?: string; error?: string }> {
