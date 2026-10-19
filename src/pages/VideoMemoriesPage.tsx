@@ -6,6 +6,7 @@ import { VideoModal } from '../components/scrapbook/VideoModal';
 import { WashiTape } from '../components/scrapbook/WashiTape';
 import { PressedFlower } from '../components/scrapbook/PressedFlower';
 import { ScrapbookImage } from '../components/scrapbook/ScrapbookImage';
+import { VideoThumbnail } from '../components/scrapbook/VideoThumbnail';
 import { useBookRoute } from '../lib/routeContext';
 
 interface VideoMemoriesPageProps {
@@ -87,18 +88,7 @@ export const VideoMemoriesPage: React.FC<VideoMemoriesPageProps> = ({ videos }) 
 
                   {/* Video Thumbnail with Play Button Overlay */}
                   <div className="relative aspect-video bg-[#1B1613] rounded-xs overflow-hidden border border-[#514137]/60 group-hover:border-[#B77D7D]/60 transition-colors">
-                    {video.thumbnail_url ? (
-                      <ScrapbookImage
-                        src={video.thumbnail_url}
-                        alt={video.title}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 opacity-90 group-hover:opacity-100"
-                        fallbackLabel="Video thumbnail unavailable"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center bg-[#1E1714]">
-                        <Film className="w-12 h-12 text-[#7E6C5F]" />
-                      </div>
-                    )}
+                    <VideoThumbnail video={video} />
 
                     {/* Play Button Icon */}
                     <div className="absolute inset-0 flex items-center justify-center bg-black/25 group-hover:bg-black/10 transition-colors">

@@ -45,6 +45,7 @@ import {
   getTimelineMemories,
   getVideos,
   getWishes,
+  mergeVideoMemories,
   saveBirthdayPage,
   savePhoto,
   saveSection,
@@ -59,6 +60,7 @@ import {
 } from '../lib/dataService';
 import { AuthState, checkAuthState, loginOwner, logoutOwner } from '../lib/authService';
 import { getSupabaseConfigStatus } from '../lib/supabase';
+import { BulkAddVideosModal } from '../components/admin/BulkAddVideosModal';
 
 type AdminTab = 'sections' | 'content' | 'photos' | 'timeline' | 'videos' | 'wishes' | 'letter';
 
@@ -104,6 +106,7 @@ export const AdminDashboard: React.FC = () => {
   const [wishes, setWishes] = useState<BirthdayWish[]>([]);
   const [letter, setLetter] = useState<PersonalLetter | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [isBulkAddVideosModalOpen, setIsBulkAddVideosModalOpen] = useState(false);
 
   const supabaseStatus = getSupabaseConfigStatus();
   const selectedPage = pages.find((page) => page.id === selectedPageId) || null;
@@ -341,6 +344,8 @@ export const AdminDashboard: React.FC = () => {
     notify('success', `Uploading ${files.length} video${files.length > 1 ? 's' : ''}...`);
 
     let uploadedCount = 0;
+    const errors: string[] = [];
+
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
       const res = await uploadMediaFile(file, 'videos', selectedPageId);
@@ -356,17 +361,96 @@ export const AdminDashboard: React.FC = () => {
         };
         await saveVideo(newVideo, selectedPageId);
         uploadedCount++;
+      } else {
+        errors.push(res.error || `Failed to upload "${file.name}"`);
       }
+    }
+
+    // Bidirectional sync: sync all videos to any section of type 'videos'
+    try {
+      const currentSections = await getSections(selectedPageId, false);
+      const allVideos = await getVideos(false, selectedPageId);
+      for (const sec of currentSections) {
+        if (sec.section_type === 'videos') {
+          const merged = mergeVideoMemories(sec.content?.videos || [], allVideos);
+          await saveSection({ ...sec, content: { ...sec.content, videos: merged } }, selectedPageId);
+        }
+      }
+    } catch (e) {
+      console.warn('Syncing videos to sections error:', e);
     }
 
     setUploading(false);
 
     if (uploadedCount > 0) {
       await loadSelectedPageData(selectedPageId);
-      notify('success', `Successfully uploaded ${uploadedCount} video${uploadedCount > 1 ? 's' : ''}! Add titles or descriptions as desired.`);
-    } else {
-      notify('error', 'Failed to upload videos.');
+      notify('success', `Successfully uploaded ${uploadedCount} video${uploadedCount > 1 ? 's' : ''}! Available on website.`);
     }
+    if (errors.length > 0) {
+      notify('error', errors.join('; '));
+    }
+  };
+
+  const handleBulkAddVideos = async (newVideos: Partial<VideoMemory>[]) => {
+    if (!selectedPageId || !newVideos.length) return;
+    setUploading(true);
+    let count = 0;
+
+    for (const v of newVideos) {
+      const vid: VideoMemory = {
+        id: v.id || newId('video'),
+        birthday_page_id: selectedPageId,
+        title: v.title || '',
+        description: v.description || '',
+        video_url: v.video_url || '',
+        thumbnail_url: v.thumbnail_url || '',
+        duration: v.duration || '',
+        date: v.date || '',
+        sort_order: videos.length + count + 1,
+        is_published: true,
+      };
+      await saveVideo(vid, selectedPageId);
+      count++;
+    }
+
+    // Bidirectional sync to birthday_sections
+    try {
+      const currentSections = await getSections(selectedPageId, false);
+      const allVideos = await getVideos(false, selectedPageId);
+      for (const sec of currentSections) {
+        if (sec.section_type === 'videos') {
+          const merged = mergeVideoMemories(sec.content?.videos || [], allVideos);
+          await saveSection({ ...sec, content: { ...sec.content, videos: merged } }, selectedPageId);
+        }
+      }
+    } catch (e) {
+      console.warn('Syncing bulk videos to sections error:', e);
+    }
+
+    await loadSelectedPageData(selectedPageId);
+    setUploading(false);
+    notify('success', `Added ${count} video${count > 1 ? 's' : ''} successfully!`);
+  };
+
+  const handleSaveAllVideos = async () => {
+    if (!selectedPageId) return;
+    setUploading(true);
+    for (const v of videos) {
+      await saveVideo(v, selectedPageId);
+    }
+    try {
+      const currentSections = await getSections(selectedPageId, false);
+      for (const sec of currentSections) {
+        if (sec.section_type === 'videos') {
+          await saveSection({ ...sec, content: { ...sec.content, videos: videos } }, selectedPageId);
+        }
+      }
+    } catch (e) {
+      console.warn('Syncing all videos error:', e);
+    }
+    await loadSelectedPageData(selectedPageId);
+    setUploading(false);
+    notify('success', 'All videos saved successfully.');
   };
 
   if (!authState.isAuthenticated) {
@@ -663,10 +747,28 @@ export const AdminDashboard: React.FC = () => {
                   items={videos}
                   onAdd={() => setVideos((items) => [...items, { id: newId('video'), birthday_page_id: selectedPageId, title: '', description: '', video_url: '', sort_order: items.length + 1, is_published: true }])}
                   onUploadMultiple={handleMultipleVideosUpload}
-                  uploadAccept="video/mp4,video/webm,video/ogg,video/*"
+                  uploadAccept="video/*,video/mp4,video/quicktime,video/webm,video/x-m4v,video/ogg,.mp4,.mov,.webm,.m4v,.mkv,.avi"
                   uploadLabel="Upload Multiple Videos"
+                  onBulkAdd={() => setIsBulkAddVideosModalOpen(true)}
+                  bulkAddLabel="Bulk Add Videos"
+                  onSaveAll={handleSaveAllVideos}
                   render={(video) => (
-                  <VideoEditor video={video} onChange={(updated) => setVideos((items) => items.map((item) => item.id === updated.id ? updated : item))} onSave={() => runSelectedMutation(() => saveVideo(video, selectedPageId), 'Video saved.')} onDelete={() => runSelectedMutation(async () => {
+                  <VideoEditor video={video} onChange={(updated) => setVideos((items) => items.map((item) => item.id === updated.id ? updated : item))} onSave={() => runSelectedMutation(async () => {
+                    const saveRes = await saveVideo(video, selectedPageId);
+                    try {
+                      const currentSections = await getSections(selectedPageId, false);
+                      const allVideos = await getVideos(false, selectedPageId);
+                      for (const sec of currentSections) {
+                        if (sec.section_type === 'videos') {
+                          const merged = mergeVideoMemories(sec.content?.videos || [], allVideos);
+                          await saveSection({ ...sec, content: { ...sec.content, videos: merged } }, selectedPageId);
+                        }
+                      }
+                    } catch (e) {
+                      console.warn('Syncing video to sections error:', e);
+                    }
+                    return saveRes;
+                  }, 'Video saved.')} onDelete={() => runSelectedMutation(async () => {
                     const delRes = await deleteVideo(video.id, selectedPageId);
                     try {
                       const currentSections = await getSections(selectedPageId, false);
@@ -710,6 +812,13 @@ export const AdminDashboard: React.FC = () => {
           )}
         </section>
       </main>
+      <BulkAddVideosModal
+        isOpen={isBulkAddVideosModalOpen}
+        onClose={() => setIsBulkAddVideosModalOpen(false)}
+        onAddVideos={handleBulkAddVideos}
+        onUploadFiles={handleMultipleVideosUpload}
+        birthdayPageId={selectedPageId}
+      />
     </div>
   );
 };
@@ -739,6 +848,9 @@ function CollectionEditor<T extends { id: string }>({
   onUploadMultiple,
   uploadAccept,
   uploadLabel,
+  onBulkAdd,
+  bulkAddLabel,
+  onSaveAll,
   render,
 }: {
   title: string;
@@ -747,6 +859,9 @@ function CollectionEditor<T extends { id: string }>({
   onUploadMultiple?: (files: FileList) => void;
   uploadAccept?: string;
   uploadLabel?: string;
+  onBulkAdd?: () => void;
+  bulkAddLabel?: string;
+  onSaveAll?: () => void;
   render: (item: T) => React.ReactNode;
 }) {
   return (
@@ -754,6 +869,25 @@ function CollectionEditor<T extends { id: string }>({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h3 className="font-serif text-2xl font-bold text-[#382C24]">{title}</h3>
         <div className="flex flex-wrap items-center gap-2">
+          {onSaveAll && items.length > 0 && (
+            <button
+              type="button"
+              onClick={onSaveAll}
+              className="inline-flex items-center gap-1.5 px-3 py-2 bg-[#6B7F61] hover:bg-[#586A4F] text-[#FAF6EC] text-xs font-serif rounded-xs shadow-xs cursor-pointer transition-colors"
+            >
+              <CheckCircle2 className="w-3.5 h-3.5" /> Save All
+            </button>
+          )}
+          {onBulkAdd && (
+            <button
+              type="button"
+              onClick={onBulkAdd}
+              className="inline-flex items-center gap-1.5 px-3 py-2 bg-[#FAF6EC] border border-[#DECFBD] text-[#382C24] hover:bg-[#F1E8DA] text-xs font-serif rounded-xs cursor-pointer shadow-xs transition-colors"
+            >
+              <Film className="w-3.5 h-3.5 text-[#B77D7D]" />
+              {bulkAddLabel || 'Bulk Add Videos'}
+            </button>
+          )}
           {onUploadMultiple && (
             <label className="inline-flex items-center gap-1.5 px-3 py-2 bg-[#FAF6EC] border border-[#DECFBD] text-[#7E6C5F] hover:text-[#382C24] hover:bg-[#F1E8DA] text-xs font-serif rounded-xs cursor-pointer shadow-xs transition-colors">
               <Upload className="w-3.5 h-3.5 text-[#B77D7D]" />
@@ -844,7 +978,7 @@ function VideoEditor({ video, onChange, onSave, onDelete, onUpload }: { video: V
       <TextArea label="Description / Caption (optional)" value={video.description || ''} onChange={(value) => onChange({ ...video, description: value })} />
       <label className="inline-flex items-center gap-2 text-xs font-serif"><input type="checkbox" checked={video.is_published} onChange={(event) => onChange({ ...video, is_published: event.target.checked })} className="accent-[#B77D7D]" />Published</label>
       <div className="flex flex-wrap gap-2 items-center justify-between">
-        <label className="inline-flex items-center gap-1.5 px-3 py-2 bg-[#FAF7F2] border border-[#DECFBD] rounded-xs text-xs font-serif cursor-pointer"><Upload className="w-3.5 h-3.5" />Upload<input type="file" accept="video/mp4,video/webm,video/ogg,video/*" className="hidden" onChange={onUpload} /></label>
+        <label className="inline-flex items-center gap-1.5 px-3 py-2 bg-[#FAF7F2] border border-[#DECFBD] rounded-xs text-xs font-serif cursor-pointer"><Upload className="w-3.5 h-3.5" />Upload<input type="file" accept="video/*,video/mp4,video/quicktime,video/webm,video/x-m4v,video/ogg,.mp4,.mov,.webm,.m4v,.mkv,.avi" className="hidden" onChange={onUpload} /></label>
         <RowActions onSave={onSave} onDelete={onDelete} />
       </div>
     </div>

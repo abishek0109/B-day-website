@@ -23,6 +23,7 @@ import {
   BirthdaySiteData,
   MemoryCategory,
   SectionType,
+  VideoMemory,
 } from '../../types/scrapbook';
 import {
   deletePhoto,
@@ -43,6 +44,7 @@ import {
   toggleSectionVisibility,
   uploadMediaFile,
 } from '../../lib/dataService';
+import { BulkAddVideosModal } from './BulkAddVideosModal';
 import { DynamicSectionRenderer } from '../scrapbook/DynamicSectionRenderer';
 
 interface SectionManagerProps {
@@ -113,6 +115,7 @@ export const SectionManager: React.FC<SectionManagerProps> = ({
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editingSection, setEditingSection] = useState<BirthdaySection | null>(null);
   const [previewSection, setPreviewSection] = useState<BirthdaySection | null>(null);
+  const [isBulkAddVideosModalOpen, setIsBulkAddVideosModalOpen] = useState(false);
 
   // Add section form
   const [newType, setNewType] = useState<SectionType>('custom');
@@ -403,13 +406,15 @@ export const SectionManager: React.FC<SectionManagerProps> = ({
     e.target.value = '';
   };
 
-  const handleMultipleVideosUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
+  const uploadMultipleVideoFilesToSection = async (files: FileList) => {
     if (!files || files.length === 0 || !editingSection) return;
 
     setUploading(true);
+    notify('success', `Uploading ${files.length} video${files.length > 1 ? 's' : ''}...`);
+
     const existing = editingSection.content?.videos || [];
     const newItems: any[] = [];
+    const errors: string[] = [];
 
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
@@ -426,6 +431,8 @@ export const SectionManager: React.FC<SectionManagerProps> = ({
           sort_order: existing.length + newItems.length + 1,
           is_published: true,
         });
+      } else {
+        errors.push(res.error || `Failed to upload "${file.name}"`);
       }
     }
 
@@ -439,10 +446,41 @@ export const SectionManager: React.FC<SectionManagerProps> = ({
         },
       });
       notify('success', `Uploaded ${newItems.length} video${newItems.length > 1 ? 's' : ''} successfully.`);
-    } else {
-      notify('error', 'Failed to upload videos.');
     }
-    e.target.value = '';
+    if (errors.length > 0) {
+      notify('error', errors.join('; '));
+    }
+  };
+
+  const handleMultipleVideosUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      await uploadMultipleVideoFilesToSection(e.target.files);
+      e.target.value = '';
+    }
+  };
+
+  const handleBulkAddVideosToSection = (newVideos: Partial<VideoMemory>[]) => {
+    if (!editingSection) return;
+    const existing = editingSection.content?.videos || [];
+    const formatted = newVideos.map((v, i) => ({
+      id: v.id || crypto.randomUUID(),
+      title: v.title || '',
+      description: v.description || '',
+      video_url: v.video_url || '',
+      thumbnail_url: v.thumbnail_url || '',
+      duration: v.duration || '',
+      date: v.date || '',
+      sort_order: existing.length + i + 1,
+      is_published: true,
+    }));
+    setEditingSection({
+      ...editingSection,
+      content: {
+        ...editingSection.content,
+        videos: [...existing, ...formatted],
+      },
+    });
+    notify('success', `Added ${formatted.length} video${formatted.length > 1 ? 's' : ''} to section.`);
   };
 
   return (
@@ -1365,12 +1403,19 @@ export const SectionManager: React.FC<SectionManagerProps> = ({
                           <h4 className="font-serif font-bold text-base text-[#382C24]">
                             Video Reels ({videoList.length})
                           </h4>
-                          <div className="flex items-center gap-2">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => setIsBulkAddVideosModalOpen(true)}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#FAF7F2] border border-[#DECFBD] text-[#382C24] text-xs font-serif rounded-xs cursor-pointer hover:bg-[#F3EAD8] transition-colors"
+                            >
+                              <Film className="w-3.5 h-3.5 text-[#B77D7D]" /> Bulk Add Videos
+                            </button>
                             <label className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#FAF7F2] border border-[#DECFBD] text-[#382C24] text-xs font-serif rounded-xs cursor-pointer hover:bg-[#F3EAD8] transition-colors">
                               <Upload className="w-3.5 h-3.5 text-[#B77D7D]" /> Upload Multiple Videos
                               <input
                                 type="file"
-                                accept="video/*"
+                                accept="video/*,video/mp4,video/quicktime,video/webm,video/x-m4v,video/ogg,.mp4,.mov,.webm,.m4v,.mkv,.avi"
                                 multiple
                                 className="hidden"
                                 onChange={handleMultipleVideosUpload}
@@ -1512,7 +1557,7 @@ export const SectionManager: React.FC<SectionManagerProps> = ({
                                 <Upload className="w-3 h-3 text-[#B77D7D]" /> Upload Video File
                                 <input
                                   type="file"
-                                  accept="video/mp4,video/webm"
+                                  accept="video/*,video/mp4,video/quicktime,video/webm,video/x-m4v,video/ogg,.mp4,.mov,.webm,.m4v,.mkv,.avi"
                                   className="hidden"
                                   onChange={(e) =>
                                     handleMediaUpload(
@@ -2026,6 +2071,13 @@ export const SectionManager: React.FC<SectionManagerProps> = ({
           </div>
         </div>
       )}
+      <BulkAddVideosModal
+        isOpen={isBulkAddVideosModalOpen}
+        onClose={() => setIsBulkAddVideosModalOpen(false)}
+        onAddVideos={handleBulkAddVideosToSection}
+        onUploadFiles={uploadMultipleVideoFilesToSection}
+        birthdayPageId={birthdayPage.id}
+      />
     </div>
   );
 };

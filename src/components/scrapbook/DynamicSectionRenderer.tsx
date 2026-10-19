@@ -34,6 +34,7 @@ import { WashiTape } from './WashiTape';
 import { StampBadge } from './StampBadge';
 import { VideoModal } from './VideoModal';
 import { ScrapbookImage } from './ScrapbookImage';
+import { VideoThumbnail } from './VideoThumbnail';
 import {
   mergeBirthdayWishes,
   mergePhotoMemories,
@@ -419,18 +420,7 @@ export const DynamicSectionRenderer: React.FC<DynamicSectionRendererProps> = ({
                           ))}
                         </div>
                         <div className="relative aspect-video bg-[#1B1613] rounded-xs overflow-hidden border border-[#514137]/60 group-hover:border-[#B77D7D]/60 transition-colors">
-                          {video.thumbnail_url ? (
-                            <ScrapbookImage
-                              src={video.thumbnail_url}
-                              alt={video.title}
-                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 opacity-90 group-hover:opacity-100"
-                              fallbackLabel="Video thumbnail unavailable"
-                            />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center bg-[#1E1714]">
-                              <Film className="w-12 h-12 text-[#7E6C5F]" />
-                            </div>
-                          )}
+                          <VideoThumbnail video={video} />
                           <div className="absolute inset-0 flex items-center justify-center bg-black/30 group-hover:bg-black/10 transition-colors">
                             <div className="w-14 h-14 rounded-full bg-[#B77D7D]/90 text-white flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
                               <Play className="w-6 h-6 fill-current translate-x-0.5" />

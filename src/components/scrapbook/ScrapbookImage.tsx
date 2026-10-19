@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ImageOff } from 'lucide-react';
+import { resolveMediaUrl, getSyncMediaUrl } from '../../lib/mediaStorage';
 
 interface ScrapbookImageProps {
   src?: string | null;
@@ -14,10 +15,25 @@ export const ScrapbookImage: React.FC<ScrapbookImageProps> = ({
   className = '',
   fallbackLabel = 'Photograph not available',
 }) => {
+  const [resolvedSrc, setResolvedSrc] = useState<string>(() => getSyncMediaUrl(src || ''));
   const [failedSource, setFailedSource] = useState<string | null>(null);
-  const hasError = src !== undefined && src !== null && failedSource === src;
 
-  if (!src || hasError) {
+  useEffect(() => {
+    let isMounted = true;
+    if (src && src.startsWith('idb://')) {
+      void resolveMediaUrl(src).then((url) => {
+        if (isMounted) setResolvedSrc(url);
+      });
+    }
+    return () => {
+      isMounted = false;
+    };
+  }, [src]);
+
+  const activeSrc = src && src.startsWith('idb://') ? resolvedSrc : src || '';
+  const hasError = activeSrc && failedSource === activeSrc;
+
+  if (!activeSrc || hasError) {
     return (
       <div
         role="img"
@@ -32,11 +48,11 @@ export const ScrapbookImage: React.FC<ScrapbookImageProps> = ({
 
   return (
     <img
-      src={src}
+      src={activeSrc}
       alt={alt}
       loading="lazy"
       className={className}
-      onError={() => setFailedSource(src || '')}
+      onError={() => setFailedSource(activeSrc)}
     />
   );
 };

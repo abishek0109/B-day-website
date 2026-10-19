@@ -1,7 +1,8 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { VideoMemory } from '../../types/scrapbook';
 import { X, Film, Calendar, Clock } from 'lucide-react';
 import { WashiTape } from './WashiTape';
+import { resolveMediaUrl, getSyncMediaUrl } from '../../lib/mediaStorage';
 
 interface VideoModalProps {
   video: VideoMemory | null;
@@ -9,7 +10,22 @@ interface VideoModalProps {
 }
 
 const NativeVideoPlayer: React.FC<{ src: string }> = ({ src }) => {
-  const [hasError, setHasError] = React.useState(false);
+  const [resolvedSrc, setResolvedSrc] = useState<string>(() => getSyncMediaUrl(src));
+  const [hasError, setHasError] = useState(false);
+
+  useEffect(() => {
+    let isMounted = true;
+    if (src && src.startsWith('idb://')) {
+      void resolveMediaUrl(src).then((url) => {
+        if (isMounted) setResolvedSrc(url);
+      });
+    }
+    return () => {
+      isMounted = false;
+    };
+  }, [src]);
+
+  const activeSrc = src && src.startsWith('idb://') ? resolvedSrc : src;
 
   if (hasError) {
     return (
@@ -23,7 +39,8 @@ const NativeVideoPlayer: React.FC<{ src: string }> = ({ src }) => {
 
   return (
     <video
-      src={src}
+      key={activeSrc}
+      src={activeSrc}
       controls
       playsInline
       className="h-full w-full object-contain"
@@ -53,18 +70,39 @@ export const VideoModal: React.FC<VideoModalProps> = ({ video, onClose }) => {
 
   if (!video) return null;
 
-  // Check if YouTube or Vimeo URL
+  // Check if YouTube, Vimeo, or Google Drive URL
   const getEmbedUrl = (url: string): string | null => {
     try {
-      if (url.includes('youtube.com/watch') || url.includes('youtu.be/')) {
-        const videoId = url.includes('youtu.be/')
-          ? url.split('youtu.be/')[1]?.split('?')[0]
-          : new URL(url).searchParams.get('v');
-        return videoId ? `https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&mute=0` : null;
+      if (!url) return null;
+      // YouTube watch
+      if (url.includes('youtube.com/watch')) {
+        const id = new URL(url).searchParams.get('v');
+        if (id) return `https://www.youtube-nocookie.com/embed/${id}?autoplay=1&mute=0`;
       }
+      // YouTube shorts
+      const shortsMatch = url.match(/youtube\.com\/shorts\/([a-zA-Z0-9_-]+)/);
+      if (shortsMatch && shortsMatch[1]) {
+        return `https://www.youtube-nocookie.com/embed/${shortsMatch[1]}?autoplay=1&mute=0`;
+      }
+      // youtu.be shortlinks
+      if (url.includes('youtu.be/')) {
+        const id = url.split('youtu.be/')[1]?.split('?')[0];
+        if (id) return `https://www.youtube-nocookie.com/embed/${id}?autoplay=1&mute=0`;
+      }
+      // YouTube embed links
+      if (url.includes('youtube.com/embed/')) {
+        const id = url.split('youtube.com/embed/')[1]?.split('?')[0];
+        if (id) return `https://www.youtube-nocookie.com/embed/${id}?autoplay=1&mute=0`;
+      }
+      // Vimeo
       if (url.includes('vimeo.com/')) {
         const id = url.split('vimeo.com/')[1]?.split('?')[0];
-        return id ? `https://player.vimeo.com/video/${id}?autoplay=1` : null;
+        if (id) return `https://player.vimeo.com/video/${id}?autoplay=1`;
+      }
+      // Google Drive
+      const gdriveMatch = url.match(/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/);
+      if (gdriveMatch && gdriveMatch[1]) {
+        return `https://drive.google.com/file/d/${gdriveMatch[1]}/preview`;
       }
     } catch (e) {
       console.warn('Could not parse video URL for embed:', e);

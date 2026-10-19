@@ -1,4 +1,5 @@
 import { supabase, isSupabaseConfigured } from './supabase';
+import { storeLocalMedia } from './mediaStorage';
 import {
   BirthdayPage,
   BirthdaySection,
@@ -637,30 +638,55 @@ export async function getPublicBirthdaySite(slug: string): Promise<BirthdaySiteD
 }
 
 export async function uploadMediaFile(file: File, folder = 'photos', birthdayPageId = DEFAULT_PAGE_ID): Promise<{ success: boolean; url?: string; error?: string }> {
-  const maxBytes = file.type.startsWith('video/') ? 100 * 1024 * 1024 : 12 * 1024 * 1024;
-  if (!file.type.startsWith('image/') && !file.type.startsWith('video/') && !file.type.startsWith('audio/')) {
-    return { success: false, error: 'Unsupported file type.' };
+  const isVideo = file.type.startsWith('video/') || /\.(mp4|webm|ogg|mov|m4v|mkv|avi|wmv|flv|3gp)$/i.test(file.name);
+  const isAudio = file.type.startsWith('audio/') || /\.(mp3|wav|ogg|m4a|aac)$/i.test(file.name);
+  const isImage = file.type.startsWith('image/') || /\.(jpg|jpeg|png|gif|webp|svg|heic|avif)$/i.test(file.name);
+
+  if (!isImage && !isVideo && !isAudio) {
+    return { success: false, error: `Unsupported file type for "${file.name}". Please upload a video or photo file.` };
   }
+
+  // Allow up to 250MB for videos, 25MB for photos
+  const maxBytes = isVideo ? 250 * 1024 * 1024 : 25 * 1024 * 1024;
   if (file.size > maxBytes) {
-    return { success: false, error: 'File is too large for this upload type.' };
+    const sizeMB = Math.round(file.size / (1024 * 1024));
+    const limitMB = Math.round(maxBytes / (1024 * 1024));
+    return { success: false, error: `"${file.name}" is ${sizeMB}MB, which exceeds the ${limitMB}MB limit.` };
   }
+
+  // 1. Try Supabase Storage if configured
   if (isSupabaseConfigured && supabase) {
     try {
-      const fileExt = file.name.split('.').pop();
+      const fileExt = file.name.split('.').pop() || (isVideo ? 'mp4' : 'jpg');
       const safeFolder = folder.replace(/[^a-z0-9-_]/gi, '-').toLowerCase();
       const fileName = `${birthdayPageId}/${safeFolder}/${Date.now()}_${crypto.randomUUID()}.${fileExt}`;
-      const { error: uploadError } = await supabase.storage.from('memories-media').upload(fileName, file, { cacheControl: '3600', upsert: false });
+      const contentType = file.type || (isVideo ? 'video/mp4' : 'image/jpeg');
+      const { error: uploadError } = await supabase.storage.from('memories-media').upload(fileName, file, {
+        cacheControl: '3600',
+        upsert: false,
+        contentType,
+      });
       if (uploadError) throw uploadError;
       const { data } = supabase.storage.from('memories-media').getPublicUrl(fileName);
       return { success: true, url: data.publicUrl };
     } catch (err: unknown) {
-      return { success: false, error: err instanceof Error ? err.message : 'Failed to upload file to Supabase storage' };
+      console.warn('Supabase storage upload failed, falling back to local persistent storage:', err);
     }
   }
+
+  // 2. Persistent IndexedDB storage fallback (handles large videos without localStorage quota limits)
+  try {
+    const { idbUri } = await storeLocalMedia(file);
+    return { success: true, url: idbUri };
+  } catch (err) {
+    console.warn('IndexedDB failed, attempting FileReader fallback:', err);
+  }
+
+  // 3. Fallback to FileReader DataURL (for small files)
   return new Promise((resolve) => {
     const reader = new FileReader();
     reader.onload = () => resolve({ success: true, url: reader.result as string });
-    reader.onerror = () => resolve({ success: false, error: 'Failed to read local file' });
+    reader.onerror = () => resolve({ success: false, error: `Failed to read file "${file.name}".` });
     reader.readAsDataURL(file);
   });
 }
